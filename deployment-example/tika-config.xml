@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+This file is distributed among all Tika Server node machines in the cluster via Docker Swarm config routines.
+
+At the current moment Docker Swarm does not allow normal updating of configs and will throw an error
+if one tries to re-deploy a service after changing this file.
+
+To make config changes accepted after changing this file please also change config name in docker-compose.yml
+(for example - increment version number):
+
+...
+configs:
+    - source: tika_config_1
+...
+...
+configs:
+  tika_config_1:
+...
+
+
+-->
+<properties>
+    <!-- Uncomment the following to disable Tesseract OCR in Tika -
+         to speedup text extracting if OCR-ing is not required. -->
+
+    <!--<parsers>
+        <parser class="org.apache.tika.parser.DefaultParser">
+            <parser-exclude class="org.apache.tika.parser.ocr.TesseractOCRParser"/>
+        </parser>
+    </parsers>-->
+</properties>
