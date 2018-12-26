@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 
-ENV TIKA_VERSION 1.18
+ENV TIKA_VERSION 1.20
 ENV TIKA_SERVER_URL https://www.apache.org/dist/tika/tika-server-$TIKA_VERSION.jar
 
 
@@ -36,6 +36,8 @@ RUN echo $(date) > /build.date
 
 EXPOSE 9998
 ENTRYPOINT  echo "Tika Server Docker Image built $(cat /build.date)" \
+	    && echo "Java Version:" \
+	    && java -version \
             && echo "Tesseract:" \
             && tesseract -v \
             && echo "Tika: ${TIKA_VERSION}" \

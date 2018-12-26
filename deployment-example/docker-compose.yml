@@ -4,7 +4,7 @@ services:
   tika:
     image: lexpredict/tika-server:latest
     ports:
-      - 9998:9998
+      - 9999:9998
     configs:
     - source: tika_config_3
       target: /tika-config.xml
