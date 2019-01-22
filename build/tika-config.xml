@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!--
-This is default empty Tika config file.
-It is copied into the Docker image to avoid errors on start if no config provided during deployment.
-
--->
-<properties>
-
-</properties>

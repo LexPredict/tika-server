@@ -32,9 +32,10 @@ RUN apt-get -y clean autoclean \
 
 # default Tika config - may be overriden by Docker Swarm config mounting
 COPY ./tika-config.xml /tika-config.xml
+COPY ./lexpredict-tika/target/lexpredict-tika-1.0.jar /
 RUN echo $(date) > /build.date
 
-EXPOSE 9998
+EXPOSE 9999
 ENTRYPOINT  echo "Tika Server Docker Image built $(cat /build.date)" \
 	    && echo "Java Version:" \
 	    && java -version \
@@ -43,4 +44,4 @@ ENTRYPOINT  echo "Tika Server Docker Image built $(cat /build.date)" \
             && echo "Tika: ${TIKA_VERSION}" \
             && echo "Config:" \
             && cat /tika-config.xml \
-            && java -jar /tika-server-${TIKA_VERSION}.jar -h 0.0.0.0 -c /tika-config.xml
+            && java -cp '${TIKA_VERSION}.jar:lexpredict-tika-1.0.jar:libs/*' org.apache.tika.server.TikaServerCli --h 0.0.0.0 --port 9998 --config tika.config
