@@ -100,10 +100,10 @@ public class AlterPDFParser extends PDFParser {
                     // parse document by using PDFStripper (default)
                     if (requestMap.containsKey(HttpRequestParamsReader.PDF_PARSE_METHOD) &&
                             requestMap.get(HttpRequestParamsReader.PDF_PARSE_METHOD).equalsIgnoreCase(
-                                    HttpRequestParamsReader.PDF_PARSE_METHOD_TIKA))
-                        callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
-                    else // ... or parse it Tika-way
+                                    HttpRequestParamsReader.PDF_PARSE_METHOD_STRIP))
                         setTextUsingPDFTextStripper(handler, pdfDocument);
+                    else // ... or parse it Tika-way
+                        callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
                 }
             }
         } catch (InvalidPasswordException e) {

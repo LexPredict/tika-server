@@ -77,6 +77,14 @@ configs:
 
 ```
 Configuration file (tika-config.xml) should be in the same directory with docker-compose.xml.
+
+**Processing PDF documents using old-style PDF-2-text conversion**
+May work better if you document's embedded fonts are corrupted.
+To use this option pass you PDF document in a PUT request like this:
+http://your_host:tika_server_port/unpack/all 
+
+while providing an additional custom header: "pdf-parse:strip".
+
 3. Deploying Tika to Docker Swarm: 
 ```
 docker stack deploy --compose-file docker-compose.yml tika-cluster
