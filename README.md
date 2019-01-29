@@ -1,6 +1,7 @@
 # tika-server
 
 Configurable Apache Tika Server Docker Image with Tesseract 4.
+
 Contains additional PDF parser improvements to workaround problem with obsolete empty lines in PDF files caused by corrupted embedded fonts.
 
 ## Contents
