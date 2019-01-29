@@ -79,8 +79,12 @@ configs:
 
 ```
 Configuration file (tika-config.xml) should be in the same directory with docker-compose.xml.
+3. Deploying Tika to Docker Swarm: 
+```
+docker stack deploy --compose-file docker-compose.yml tika-cluster
+```
 
-**Workaround for fixing obsolete empty lines in PDF documents having corrupted embedded fonts**
+## Workaround for fixing obsolete empty lines in PDF documents having corrupted embedded fonts
 
 In some cases the current PDF text extraction routines from TIKA work incorrectly with PDF documents containing corrupted embedded fonts. The extracted text contains an obsolete blank line after almost every line of normal text.
 
@@ -89,8 +93,3 @@ This workaround is not suitable for all cases because it provides worse results 
 
 Normaly TIKA configured in this Docker image processes PDFs as usual without using the old-style PDFTextStripper.
 To trigger processing the document with PDFTextStripper add a header to the request: "pdf-parse:strip".
-
-3. Deploying Tika to Docker Swarm: 
-```
-docker stack deploy --compose-file docker-compose.yml tika-cluster
-```
