@@ -63,3 +63,13 @@ this class "removes" alpha channel from all embedded in PDDocument images by dra
 1.4) PdfContentTypeChecker.java
 this class determines the content of the PDDocument passed. The content is either "EMPTY, TEXT", "IMAGES" or "MIXED" (text + images). When the content is "IMAGES" and "pdf-parse" is set to "pdf_ocr" the parser uses OCR document processing.
 
+1.5) PdfStripperProcessor.java
+the class encapsulates PDFTextStripper functionality for setting text in ContentHandler parameter.
+
+2) Directory lexpredict-tika/src/test/java/com/lexpredict/tika
+2.1) AlterPDFParserTest.java
+contains unit tests for AlterPDFParser: tests getting text from vector and scanned PDF.
+
+2.2, 2.3) PdfContentImagePreprocessorTest.java, PdfCOntentTypeCheckerTest.java
+unit tests for PdfContentImagePreprocessor and PdfContentTypeChecker classes
+
