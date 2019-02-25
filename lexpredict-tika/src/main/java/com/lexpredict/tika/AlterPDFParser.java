@@ -1,5 +1,6 @@
 package com.lexpredict.tika;
 
+import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.io.input.CloseShieldInputStream;
 import org.apache.pdfbox.io.MemoryUsageSetting;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -26,9 +27,8 @@ public class AlterPDFParser extends PDFParser {
         DEFAULT, PDF_OCR, TEXT_STRIP
     }
 
+    // uses this value if it is not set in HttpRequest
     public ParsePdfMode defaultParseMode = ParsePdfMode.DEFAULT;
-
-    private static final Object[] LOCK = new Object[0];
 
     // Metadata key for giving the document password to the parser
     private static final MediaType MEDIA_TYPE = MediaType.application("pdf");
@@ -46,7 +46,9 @@ public class AlterPDFParser extends PDFParser {
         HashMap<String, String> requestMap = HttpRequestParamsReader.readQueryParameters(stream);
         ParsePdfMode pdfParseMode = readParseMode(requestMap);
 
-        PDFParserConfig localConfig = context.get(PDFParserConfig.class, defaultConfig);
+        PDFParserConfig sourceConfig = context.get(PDFParserConfig.class, defaultConfig);
+        PDFParserConfig localConfig = makeConfigLocalCopy(sourceConfig);
+
         if (localConfig.getSetKCMS())
             System.setProperty("sun.java2d.cmm", "sun.java2d.cmm.kcms.KcmsServiceProvider");
 
@@ -103,26 +105,19 @@ public class AlterPDFParser extends PDFParser {
         } catch (InvalidPasswordException e) {
             metadata.set(PDF.IS_ENCRYPTED, "true");
             throw new EncryptedDocumentException(e);
-        } catch (NoSuchMethodException e) {
+        } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException |
+                NoSuchFieldException | ClassNotFoundException | IOException e) {
             e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            // see e.getCause()
-            e.printStackTrace();
-        } catch (NoSuchFieldException e) {
-            e.printStackTrace();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
+        } // see e.getCause()
+        finally {
             if (pdfDocument != null) {
                 pdfDocument.close();
             }
         }
     }
 
+    // method determines what parsing strategy to use
+    // from HTTPRequest or the default variable value
     private ParsePdfMode readParseMode(HashMap<String, String> requestMap) {
         if (HttpRequestParamsReader.checkParamValue(requestMap,
                 HttpRequestParamsReader.PDF_PARSE_METHOD,
@@ -135,6 +130,7 @@ public class AlterPDFParser extends PDFParser {
         return defaultParseMode;
     }
 
+    // extract doc's metadata and check whether it is accessible
     private void extractAndCheckMetadata(Metadata metadata, ParseContext context, PDFParserConfig localConfig, PDDocument pdfDocument)
             throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, AccessPermissionException {
         metadata.set(PDF.IS_ENCRYPTED, Boolean.toString(pdfDocument.isEncrypted()));
@@ -145,6 +141,10 @@ public class AlterPDFParser extends PDFParser {
         checker.check(metadata);
     }
 
+    // process PDF as a printed (vector) document
+    // uses standard Tika's PDF2XHTML class by reflection
+    // because this class is private (package restricted) and I don't
+    // want to copy the class's code and a bunsh of dependent modules into plugin
     private void callPDF2XHTMLProcess(PDDocument document, ContentHandler handler,
                                         ParseContext context, Metadata metadata,
                                         PDFParserConfig config) throws
@@ -156,6 +156,8 @@ public class AlterPDFParser extends PDFParser {
         m.invoke(null, document, handler, context, metadata, config);
     }
 
+    // process PDF as a scanned image set
+    // again uses reflection
     private void callOCR2XHTMLProcess(PDDocument document, ContentHandler handler,
                                         ParseContext context, Metadata metadata,
                                         PDFParserConfig config) throws
@@ -165,6 +167,7 @@ public class AlterPDFParser extends PDFParser {
         boolean oldExtractInlineImages = config.getExtractInlineImages();
         boolean oldExtractUniqueInlineImagesOnly = config.getExtractUniqueInlineImagesOnly();
 
+        // explicitly tells Tika to use OCR
         config.setOcrStrategy(PDFParserConfig.OCR_STRATEGY.OCR_AND_TEXT_EXTRACTION);
         config.setExtractInlineImages(true);
         config.setExtractUniqueInlineImagesOnly(false);
@@ -181,6 +184,7 @@ public class AlterPDFParser extends PDFParser {
         config.setExtractUniqueInlineImagesOnly(oldExtractUniqueInlineImagesOnly);
     }
 
+    // check whether the method should read XFA (forms) only
     private boolean callShouldHandleXFAOnly(PDDocument pdDocument, PDFParserConfig config)
             throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Method m = getClass().getSuperclass().getDeclaredMethod("shouldHandleXFAOnly",
@@ -189,6 +193,7 @@ public class AlterPDFParser extends PDFParser {
         return (boolean)m.invoke(this, pdDocument, config);
     }
 
+    // read XFA forms' content
     private void callHandleXFAOnly(PDDocument pdDocument, ContentHandler handler,
                                Metadata metadata, ParseContext context)
             throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
@@ -198,6 +203,7 @@ public class AlterPDFParser extends PDFParser {
         m.invoke(this, pdDocument, handler, metadata, context);
     }
 
+    // uses reflection, again, for obtaining PDF's metadata
     private void callExtractMetadata(PDDocument document, Metadata metadata, ParseContext context)
             throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
         Method m = getClass().getSuperclass().getDeclaredMethod("extractMetadata",
@@ -206,6 +212,7 @@ public class AlterPDFParser extends PDFParser {
         m.invoke(this, document, metadata, context);
     }
 
+    // read password from metadata
     private String callGetPassword(Metadata metadata, ParseContext context)
             throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
         Method m = getClass().getSuperclass().getDeclaredMethod("getPassword",
@@ -213,5 +220,16 @@ public class AlterPDFParser extends PDFParser {
         m.setAccessible(true);
         Object retVal = m.invoke(this, metadata, context);
         return (String)retVal;
+    }
+
+    // make a copy because I don't want to modify original config params
+    private PDFParserConfig makeConfigLocalCopy(PDFParserConfig srcConfig) {
+        try {
+            return (PDFParserConfig)BeanUtils.cloneBean(srcConfig);
+        } catch (IllegalAccessException | InstantiationException |
+                InvocationTargetException | NoSuchMethodException e) {
+            e.printStackTrace();
+        }
+        return srcConfig;
     }
 }
