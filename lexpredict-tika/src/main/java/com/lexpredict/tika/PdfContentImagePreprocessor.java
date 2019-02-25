@@ -24,9 +24,8 @@ public class PdfContentImagePreprocessor {
         this.document = document;
         imagesWereChanged = false;
         try {
-            return false;
-            //removeImagesAlphaChannelUnsafe();
-            //return imagesWereChanged;
+            removeImagesAlphaChannelUnsafe();
+            return imagesWereChanged;
         } catch (Exception e) {
             return false;
         }

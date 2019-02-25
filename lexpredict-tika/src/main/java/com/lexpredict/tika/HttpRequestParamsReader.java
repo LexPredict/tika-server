@@ -3,7 +3,6 @@ package com.lexpredict.tika;
 import org.eclipse.jetty.http.HttpField;
 import org.eclipse.jetty.http.HttpFields;
 import org.eclipse.jetty.http.MetaData;
-
 import javax.servlet.http.HttpServletRequest;
 import java.io.InputStream;
 import java.lang.reflect.Field;
@@ -11,10 +10,8 @@ import java.util.HashMap;
 
 public class HttpRequestParamsReader {
     public static final String PDF_PARSE_METHOD = "pdf-parse";
-    public static final String PDF_PARSE_METHOD_DEFAULT = "default";
     public static final String PDF_PARSE_METHOD_STRIP = "strip";
     public static final String PDF_PARSE_METHOD_PDF_OCR = "pdf_ocr";
-    public static final String PDF_PARSE_METHOD_OCR = "ocr";
 
     public static HashMap<String, String> readQueryParameters(InputStream stream) {
         HashMap<String, String> map = new HashMap<String, String>();
@@ -27,6 +24,13 @@ public class HttpRequestParamsReader {
             map.put(field.getName(), field.getValue());
 
         return map;
+    }
+
+    public static boolean checkParamValue(HashMap<String, String> requestMap,
+                                   String ptrName, String expectedValue) {
+        return requestMap.containsKey(ptrName) &&
+                requestMap.get(ptrName).equalsIgnoreCase(
+                        expectedValue);
     }
 
     private static MetaData getMetaDataField(Object stream) {
@@ -60,13 +64,10 @@ public class HttpRequestParamsReader {
 
     private static Field findField(Class<?> cls, String fieldName) {
         while (true) {
-            //for (Field field: cls.getDeclaredFields()) {
-            //    if (field.getName() == fieldName)
-            //        return field;
-            //}
             try {
                 return cls.getDeclaredField(fieldName);
             } catch (NoSuchFieldException e) {
+                // go further
             }
             cls = cls.getSuperclass();
             if (cls == null)
