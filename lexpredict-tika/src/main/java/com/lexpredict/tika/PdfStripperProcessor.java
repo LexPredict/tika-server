@@ -14,6 +14,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
+// Class uses PDFBox text "stripping" methods
+// instead of Tika's ones
+// Sometimes PDFBox method format extracted text better than Tika
 public class PdfStripperProcessor {
     public static void setTextUsingPDFTextStripper(ContentHandler handler, PDDocument pdfDocument)
             throws IOException, SAXException, NoSuchMethodException, InvocationTargetException,
@@ -58,7 +61,7 @@ public class PdfStripperProcessor {
 
     private static void writeCharsToTextHandler(ToTextContentHandler handler, char[] chars)
             throws IllegalAccessException, NoSuchFieldException, IOException {
-        Field writerField = lookupFieldInClass(handler.getClass(), "writer");
+        Field writerField = FieldLookup.findField(handler.getClass(), "writer");
         if (writerField == null)
             throw new NoSuchFieldException("writer");
         writerField.setAccessible(true);
@@ -78,7 +81,7 @@ public class PdfStripperProcessor {
             } catch (NoSuchMethodException e) {
                 // pass
             }
-            Field handField = lookupFieldInClass(handler.getClass(), "handler");
+            Field handField = FieldLookup.findField(handler.getClass(), "handler");
             if (handField == null)
                 throw new NoSuchMethodException("characters");
             handField.setAccessible(true);
@@ -105,7 +108,7 @@ public class PdfStripperProcessor {
         while (true) {
             Class<?> handlerClass = handler.getClass();
             if (handlerClass == desiredClass) break;
-            Field handlerField = lookupFieldInClass(handlerClass,"handler");
+            Field handlerField = FieldLookup.findField(handlerClass,"handler");
             if (handlerField == null)
                 return handler;
 
@@ -114,21 +117,10 @@ public class PdfStripperProcessor {
         }
         return handler;
     }
-
-    private static Field lookupFieldInClass(Class<?> cls, String fieldName) {
-        while (true) {
-            try {
-                return cls.getDeclaredField(fieldName);
-            } catch (NoSuchFieldException e) {
-                // pass
-            }
-            cls = cls.getSuperclass();
-            if (cls == null) break;
-        }
-        return null;
-    }
 }
 
+// the class tells calling code that the passed content should be
+// included in the output
 class TrueMatcher extends Matcher {
     @Override
     public boolean matchesText() {

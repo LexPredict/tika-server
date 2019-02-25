@@ -15,6 +15,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
+// determine content of the PDDocument passed:
+// whether it contains text, images, text + images or just nothing
 public class PdfContentTypeChecker {
     public enum PdfContent {
         EMPTY, TEXT, IMAGES, MIXED, UNKNOWN
@@ -26,6 +28,7 @@ public class PdfContentTypeChecker {
 
     private int textBlocks = 0;
 
+    // reads PDDocument from the stream and calls determineDocContentType
     public PdfContent determineDocContentType(InputStream stream) {
         try {
             PDDocument document = PDDocument.load(stream);
@@ -48,6 +51,8 @@ public class PdfContentTypeChecker {
         return docContent;
     }
 
+    // calculate count of text blocks (textBlocks member) and
+    // images (imagesCount) in the document
     private void calculateObjectsInDocument(PDDocument document) {
         try {
             PDPageTree allPages = document.getDocumentCatalog().getPages();
@@ -60,6 +65,7 @@ public class PdfContentTypeChecker {
         }
     }
 
+    // calculate objects' count for the page passed
     private void readObjectsOnPage(PDPage page) throws IOException {
         getImagesFromResources(page.getResources());
         calculateTextObjectsOnPage(page);

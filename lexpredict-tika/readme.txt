@@ -1,3 +1,12 @@
+Release notes;
+
+- current version: 1.0
+
+
+
+
+
+
 - 1 - how to build
 
 Just run "mvn install" or "mvn install -DskipTests" command in the project directory (lexpredict-tika). Output file lexpredict-tika-<version>.jar would be in lexpredict-tika/target/ folder.
@@ -54,17 +63,21 @@ This parameter comes from the plugin. It could have one of the three values
 1.1) AlterPDFParser.java
 here is the plugin itself. A class derived from standard PDFParser.
 
-1.2) HttpRequestParamsReader.java
+1.2) FieldLookup.java
+finds field in passed class or one of his ancestors.
+
+1.3) HttpRequestParamsReader.java
 a class that captures HTTP context for the command passed to the Tika server. Searches for "pdf-parse" request parameter.
 
-1.3) PdfContentImagePreprocessor.java
+1.4) PdfContentImagePreprocessor.java
 this class "removes" alpha channel from all embedded in PDDocument images by drawing them on a solid color background. Thus preventing issue with parsing transparent images.
 
-1.4) PdfContentTypeChecker.java
+1.5) PdfContentTypeChecker.java
 this class determines the content of the PDDocument passed. The content is either "EMPTY, TEXT", "IMAGES" or "MIXED" (text + images). When the content is "IMAGES" and "pdf-parse" is set to "pdf_ocr" the parser uses OCR document processing.
 
-1.5) PdfStripperProcessor.java
+1.6) PdfStripperProcessor.java
 the class encapsulates PDFTextStripper functionality for setting text in ContentHandler parameter.
+
 
 2) Directory lexpredict-tika/src/test/java/com/lexpredict/tika
 2.1) AlterPDFParserTest.java

@@ -8,6 +8,8 @@ import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 
+// class reads HttpRequest params from InputStream
+// if InputStream is from HttpRequest
 public class HttpRequestParamsReader {
     public static final String PDF_PARSE_METHOD = "pdf-parse";
     public static final String PDF_PARSE_METHOD_STRIP = "strip";
@@ -26,6 +28,7 @@ public class HttpRequestParamsReader {
         return map;
     }
 
+    // just check the value specified in the dictionary passed
     public static boolean checkParamValue(HashMap<String, String> requestMap,
                                    String ptrName, String expectedValue) {
         return requestMap.containsKey(ptrName) &&
@@ -33,14 +36,15 @@ public class HttpRequestParamsReader {
                         expectedValue);
     }
 
+    // read metadata from HttpRequest
     private static MetaData getMetaDataField(Object stream) {
         while (true) {
             try {
-                Field field = findField(stream.getClass(), "val$req");
+                Field field = FieldLookup.findField(stream.getClass(), "val$req");
                 if (field != null) {
                     field.setAccessible(true);
                     HttpServletRequest req = (HttpServletRequest) field.get(stream);
-                    field = findField(req.getClass(), "_metaData");
+                    field = FieldLookup.findField(req.getClass(), "_metaData");
                     if (field == null)
                         return null;
                     field.setAccessible(true);
@@ -50,7 +54,7 @@ public class HttpRequestParamsReader {
                 return null;
             }
 
-            Field inField = findField(stream.getClass(), "in");
+            Field inField = FieldLookup.findField(stream.getClass(), "in");
             if (inField == null)
                 return null;
             inField.setAccessible(true);
@@ -62,16 +66,5 @@ public class HttpRequestParamsReader {
         }
     }
 
-    private static Field findField(Class<?> cls, String fieldName) {
-        while (true) {
-            try {
-                return cls.getDeclaredField(fieldName);
-            } catch (NoSuchFieldException e) {
-                // go further
-            }
-            cls = cls.getSuperclass();
-            if (cls == null)
-                return null;
-        }
-    }
+
 }
