@@ -22,6 +22,7 @@ import org.apache.tika.sax.xpath.Matcher;
 import org.apache.tika.sax.xpath.MatchingContentHandler;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 //import javax.xml.stream.XMLStreamException;
 import java.io.*;
@@ -85,27 +86,45 @@ public class AlterPDFParser extends PDFParser {
 
             extractAndCheckMetadata(metadata, context, localConfig, pdfDocument);
 
-            if (handler != null) {
+            if (handler == null)
+                return;
 
-                if (callShouldHandleXFAOnly(pdfDocument, localConfig)) {
-                    callHandleXFAOnly(pdfDocument, handler, metadata, context);
-                } else if (localConfig.getOcrStrategy().equals(PDFParserConfig.OCR_STRATEGY.OCR_ONLY)) {
-                    metadata.add("X-Parsed-By", TesseractOCRParser.class.toString());
+            // preprocess document
+            //PdfContentImagePreprocessor preproc = new PdfContentImagePreprocessor();
+            //preproc.removeImagesAlphaChannel(pdfDocument);
 
-                    callOCR2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
-                } else {
-                    if (localConfig.getOcrStrategy().equals(PDFParserConfig.OCR_STRATEGY.OCR_AND_TEXT_EXTRACTION)) {
-                        metadata.add("X-Parsed-By", TesseractOCRParser.class.toString());
-                    }
-                    // parse document by using PDFStripper (default)
-                    if (requestMap.containsKey(HttpRequestParamsReader.PDF_PARSE_METHOD) &&
-                            requestMap.get(HttpRequestParamsReader.PDF_PARSE_METHOD).equalsIgnoreCase(
-                                    HttpRequestParamsReader.PDF_PARSE_METHOD_STRIP))
-                        setTextUsingPDFTextStripper(handler, pdfDocument);
-                    else // ... or parse it Tika-way
-                        callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
-                }
+            if (callShouldHandleXFAOnly(pdfDocument, localConfig)) {
+                callHandleXFAOnly(pdfDocument, handler, metadata, context);
             }
+            else if (localConfig.getOcrStrategy().equals(PDFParserConfig.OCR_STRATEGY.OCR_ONLY)) {
+                metadata.add("X-Parsed-By", TesseractOCRParser.class.toString());
+                callOCR2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
+            }
+            else {
+                // parse document by using PDFStripper (default)
+                if (shouldUseTextStripper(requestMap))
+                    setTextUsingPDFTextStripper(handler, pdfDocument);
+                // parse by Tesseract OCR
+                else if (shouldUseOcrParse(requestMap)) {
+                    //throw new NotImplementedException();
+                    metadata.add("X-Parsed-By", TesseractOCRParser.class.toString());
+                    callOCR2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
+                }
+                // smart parsing: PDF or OCR
+                else if (shouldUseSmartPdfOcr(requestMap)) {
+                    PdfContentTypeChecker checker = new PdfContentTypeChecker();
+                    PdfContentTypeChecker.PdfContent docType = checker.determineDocContentType(pdfDocument);
+                    if (docType != PdfContentTypeChecker.PdfContent.IMAGES)
+                        callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
+                    else {
+                        metadata.add("X-Parsed-By", TesseractOCRParser.class.toString());
+                        callOCR2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
+                    }
+                }
+                else // ... or parse it Tika-way
+                    callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
+            }
+
         } catch (InvalidPasswordException e) {
             metadata.set(PDF.IS_ENCRYPTED, "true");
             throw new EncryptedDocumentException(e);
@@ -129,7 +148,26 @@ public class AlterPDFParser extends PDFParser {
         }
     }
 
-    private void extractAndCheckMetadata(Metadata metadata, ParseContext context, PDFParserConfig localConfig, PDDocument pdfDocument) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, AccessPermissionException {
+    private boolean shouldUseTextStripper(HashMap<String, String> requestMap) {
+        return requestMap.containsKey(HttpRequestParamsReader.PDF_PARSE_METHOD) &&
+                requestMap.get(HttpRequestParamsReader.PDF_PARSE_METHOD).equalsIgnoreCase(
+                        HttpRequestParamsReader.PDF_PARSE_METHOD_STRIP);
+    }
+
+    private boolean shouldUseSmartPdfOcr(HashMap<String, String> requestMap) {
+        return requestMap.containsKey(HttpRequestParamsReader.PDF_PARSE_METHOD) &&
+                requestMap.get(HttpRequestParamsReader.PDF_PARSE_METHOD).equalsIgnoreCase(
+                        HttpRequestParamsReader.PDF_PARSE_METHOD_PDF_OCR);
+    }
+
+    private boolean shouldUseOcrParse(HashMap<String, String> requestMap) {
+        return requestMap.containsKey(HttpRequestParamsReader.PDF_PARSE_METHOD) &&
+                requestMap.get(HttpRequestParamsReader.PDF_PARSE_METHOD).equalsIgnoreCase(
+                        HttpRequestParamsReader.PDF_PARSE_METHOD_OCR);
+    }
+
+    private void extractAndCheckMetadata(Metadata metadata, ParseContext context, PDFParserConfig localConfig, PDDocument pdfDocument)
+            throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, AccessPermissionException {
         metadata.set(PDF.IS_ENCRYPTED, Boolean.toString(pdfDocument.isEncrypted()));
         metadata.set(Metadata.CONTENT_TYPE, MEDIA_TYPE.toString());
         callExtractMetadata(pdfDocument, metadata, context);
@@ -164,13 +202,26 @@ public class AlterPDFParser extends PDFParser {
                                         ParseContext context, Metadata metadata,
                                         PDFParserConfig config) throws
             ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        Class c = Class.forName("org.apache.tika.parser.pdf.PDF2XHTML");
+
+        PDFParserConfig.OCR_STRATEGY oldOcrStrategy = config.getOcrStrategy();
+        boolean oldExtractInlineImages = config.getExtractInlineImages();
+        boolean oldExtractUniqueInlineImagesOnly = config.getExtractUniqueInlineImagesOnly();
+
+        config.setOcrStrategy(PDFParserConfig.OCR_STRATEGY.OCR_AND_TEXT_EXTRACTION);
+        config.setExtractInlineImages(true);
+        config.setExtractUniqueInlineImagesOnly(false);
+
+        Class c = Class.forName("org.apache.tika.parser.pdf.OCR2XHTML");
         Method m = c.getDeclaredMethod("process", new Class<?>[]{
                 PDDocument.class, ContentHandler.class, ParseContext.class, Metadata.class,
                 PDFParserConfig.class
         });
         m.setAccessible(true);
         m.invoke(null, document, handler, context, metadata, config);
+
+        config.setOcrStrategy(oldOcrStrategy);
+        config.setExtractInlineImages(oldExtractInlineImages);
+        config.setExtractUniqueInlineImagesOnly(oldExtractUniqueInlineImagesOnly);
     }
 
     protected boolean callShouldHandleXFAOnly(PDDocument pdDocument, PDFParserConfig config)

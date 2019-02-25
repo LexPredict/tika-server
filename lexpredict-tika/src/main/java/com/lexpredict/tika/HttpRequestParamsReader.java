@@ -13,6 +13,8 @@ public class HttpRequestParamsReader {
     public static final String PDF_PARSE_METHOD = "pdf-parse";
     public static final String PDF_PARSE_METHOD_DEFAULT = "default";
     public static final String PDF_PARSE_METHOD_STRIP = "strip";
+    public static final String PDF_PARSE_METHOD_PDF_OCR = "pdf_ocr";
+    public static final String PDF_PARSE_METHOD_OCR = "ocr";
 
     public static HashMap<String, String> readQueryParameters(InputStream stream) {
         HashMap<String, String> map = new HashMap<String, String>();
