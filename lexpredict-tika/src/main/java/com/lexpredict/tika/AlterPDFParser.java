@@ -1,6 +1,5 @@
 package com.lexpredict.tika;
 
-import org.apache.commons.beanutils.BeanUtils;
 import org.apache.commons.io.input.CloseShieldInputStream;
 import org.apache.pdfbox.io.MemoryUsageSetting;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -224,12 +223,8 @@ public class AlterPDFParser extends PDFParser {
 
     // make a copy because I don't want to modify original config params
     private PDFParserConfig makeConfigLocalCopy(PDFParserConfig srcConfig) {
-        try {
-            return (PDFParserConfig)BeanUtils.cloneBean(srcConfig);
-        } catch (IllegalAccessException | InstantiationException |
-                InvocationTargetException | NoSuchMethodException e) {
-            e.printStackTrace();
-        }
-        return srcConfig;
+        PDFParserConfig cpy = new PDFParserConfig();
+        ShallowCopy.copyFields(srcConfig, cpy);
+        return cpy;
     }
 }
