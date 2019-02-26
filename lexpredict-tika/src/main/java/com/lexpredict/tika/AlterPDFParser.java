@@ -42,6 +42,7 @@ public class AlterPDFParser extends PDFParser {
             InputStream stream, ContentHandler handler,
             Metadata metadata, ParseContext context)
             throws IOException, SAXException, TikaException {
+        System.out.println("AlterPDFParser.parse()");
         HashMap<String, String> requestMap = HttpRequestParamsReader.readQueryParameters(stream);
         ParsePdfMode pdfParseMode = readParseMode(requestMap);
 
@@ -76,9 +77,11 @@ public class AlterPDFParser extends PDFParser {
             //preproc.removeImagesAlphaChannel(pdfDocument);
 
             if (callShouldHandleXFAOnly(pdfDocument, localConfig)) {
+                System.out.println("AlterPDFParser.parse(callShouldHandleXFAOnly)");
                 callHandleXFAOnly(pdfDocument, handler, metadata, context);
             }
             else if (localConfig.getOcrStrategy().equals(PDFParserConfig.OCR_STRATEGY.OCR_ONLY)) {
+                System.out.println("AlterPDFParser.parse(OCR_ONLY)");
                 metadata.add("X-Parsed-By", TesseractOCRParser.class.toString());
                 callOCR2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
             }
@@ -88,6 +91,7 @@ public class AlterPDFParser extends PDFParser {
                     PdfStripperProcessor.setTextUsingPDFTextStripper(handler, pdfDocument);
                 // smart parsing: PDF or OCR
                 else if (pdfParseMode == ParsePdfMode.PDF_OCR) {
+                    System.out.println("AlterPDFParser.parse(PDF_OCR)");
                     PdfContentTypeChecker checker = new PdfContentTypeChecker();
                     PdfContentTypeChecker.PdfContent docType = checker.determineDocContentType(pdfDocument);
                     if (docType != PdfContentTypeChecker.PdfContent.IMAGES)
@@ -97,8 +101,10 @@ public class AlterPDFParser extends PDFParser {
                         callOCR2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
                     }
                 }
-                else // ... or parse it default Tika-way
+                else { // ... or parse it default Tika-way
+                    System.out.println("AlterPDFParser.parse(callPDF2XHTMLProcess)");
                     callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
+                }
             }
 
         } catch (InvalidPasswordException e) {
