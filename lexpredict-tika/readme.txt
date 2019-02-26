@@ -78,11 +78,14 @@ this class determines the content of the PDDocument passed. The content is eithe
 1.6) PdfStripperProcessor.java
 the class encapsulates PDFTextStripper functionality for setting text in ContentHandler parameter.
 
+1.7) ShallowCopy.java
+this class makes a shallow copy, setting the "to" object's properties equal to the ones of object "from".
+
 
 2) Directory lexpredict-tika/src/test/java/com/lexpredict/tika
 2.1) AlterPDFParserTest.java
 contains unit tests for AlterPDFParser: tests getting text from vector and scanned PDF.
 
-2.2, 2.3) PdfContentImagePreprocessorTest.java, PdfCOntentTypeCheckerTest.java
+2.2, 2.3, 2.4) PdfContentImagePreprocessorTest.java, PdfCOntentTypeCheckerTest.java, ShallowCopy.java
 unit tests for PdfContentImagePreprocessor and PdfContentTypeChecker classes
 
