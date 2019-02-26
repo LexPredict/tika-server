@@ -1,6 +1,8 @@
 # tika-server
 
-Configurable Apache Tika Server Docker Image with Tesseract 4
+Configurable Apache Tika Server Docker Image with Tesseract 4.
+
+Contains additional PDF parser improvements to workaround problem with obsolete empty lines in PDF files caused by corrupted embedded fonts.
 
 ## Contents
 - Apache Tika 1.20
@@ -77,15 +79,17 @@ configs:
 
 ```
 Configuration file (tika-config.xml) should be in the same directory with docker-compose.xml.
-
-**Processing PDF documents using old-style PDF-2-text conversion**
-May work better if you document's embedded fonts are corrupted.
-To use this option pass you PDF document in a PUT request like this:
-http://your_host:tika_server_port/unpack/all 
-
-while providing an additional custom header: "pdf-parse:strip".
-
 3. Deploying Tika to Docker Swarm: 
 ```
 docker stack deploy --compose-file docker-compose.yml tika-cluster
 ```
+
+## Workaround for fixing obsolete empty lines in PDF documents having corrupted embedded fonts
+
+In some cases the current PDF text extraction routines from TIKA work incorrectly with PDF documents containing corrupted embedded fonts. The extracted text contains an obsolete blank line after almost every line of normal text.
+
+It can be fixed by using PDFTextStripper class from PDFBox which probably was used in previous versions of TIKA.
+This workaround is not suitable for all cases because it provides worse results than TIKA's normal text extraction on good uncorrupted PDF documents.
+
+Normaly TIKA configured in this Docker image processes PDFs as usual without using the old-style PDFTextStripper.
+To trigger processing the document with PDFTextStripper add a header to the request: "pdf-parse:strip".
