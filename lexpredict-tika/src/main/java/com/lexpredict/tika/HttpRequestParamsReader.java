@@ -8,32 +8,81 @@ import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 
+enum CommonParseFlag
+{
+    VERBOSE, PDF_PARSE_METHOD;
+}
+
 // class reads HttpRequest params from InputStream
 // if InputStream is from HttpRequest
 public class HttpRequestParamsReader {
-    public static final String PDF_PARSE_METHOD = "pdf-parse";
     public static final String PDF_PARSE_METHOD_STRIP = "strip";
     public static final String PDF_PARSE_METHOD_PDF_OCR = "pdf_ocr";
 
-    public static HashMap<String, String> readQueryParameters(InputStream stream) {
-        HashMap<String, String> map = new HashMap<String, String>();
+    public HashMap<String, String> rawParams = new HashMap<String, String>();
+    public HashMap<CommonParseFlag, String> typedParams = new HashMap<>();
+
+    private static HashMap<String, CommonParseFlag> flagByName = new HashMap<String, CommonParseFlag>() {
+        {
+            put("v", CommonParseFlag.VERBOSE);
+            put("-verbose", CommonParseFlag.VERBOSE);
+            put("pdf-parse", CommonParseFlag.PDF_PARSE_METHOD);
+        }
+    };
+
+    private static HttpRequestParamsReader single_instance = null;
+
+    private boolean initialized = false;
+
+    private HttpRequestParamsReader()
+    {
+    }
+
+    // static method to create instance of Singleton class
+    public static HttpRequestParamsReader getInstance()
+    {
+        if (single_instance == null)
+            single_instance = new HttpRequestParamsReader();
+        return single_instance;
+    }
+
+    public void initialize(InputStream stream) {
+        if (initialized)
+            return;
+        initialized = true;
         MetaData metaDict = getMetaDataField(stream);
         if (metaDict == null)
-            return map;
+            return;
 
         HttpFields fields = metaDict.getFields();
         for (HttpField field : fields)
-            map.put(field.getName(), field.getValue());
+            rawParams.put(field.getName(), field.getValue());
+        GetCommonFlags();
+    }
 
-        return map;
+    public boolean IsVerbose() {
+        return typedParams.containsKey(CommonParseFlag.VERBOSE);
+    }
+
+    public void outIfVerbose(String s) {
+        if (!IsVerbose()) return;
+        System.out.println(s);
     }
 
     // just check the value specified in the dictionary passed
-    public static boolean checkParamValue(HashMap<String, String> requestMap,
-                                   String ptrName, String expectedValue) {
-        return requestMap.containsKey(ptrName) &&
-                requestMap.get(ptrName).equalsIgnoreCase(
+    public boolean checkParamValue(CommonParseFlag ptrName, String expectedValue) {
+        return typedParams.containsKey(ptrName) &&
+                typedParams.get(ptrName).equalsIgnoreCase(
                         expectedValue);
+    }
+
+    private void GetCommonFlags() {
+        rawParams.entrySet().forEach(entry -> {
+            flagByName.entrySet().forEach(fl -> {
+                if (fl.getKey().equals(entry.getKey()))
+                    typedParams.put(fl.getValue(), entry.getValue());
+            });
+        });
     }
 
     // read metadata from HttpRequest
@@ -47,6 +96,7 @@ public class HttpRequestParamsReader {
                     field = FieldLookup.findField(req.getClass(), "_metaData");
                     if (field == null)
                         return null;
+
                     field.setAccessible(true);
                     return (MetaData) field.get(req);
                 }
@@ -57,6 +107,7 @@ public class HttpRequestParamsReader {
             Field inField = FieldLookup.findField(stream.getClass(), "in");
             if (inField == null)
                 return null;
+
             inField.setAccessible(true);
             try {
                 stream = inField.get(stream);
@@ -65,6 +116,4 @@ public class HttpRequestParamsReader {
             }
         }
     }
-
-
 }

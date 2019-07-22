@@ -19,7 +19,7 @@ import org.xml.sax.SAXException;
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.HashMap;
+
 
 public class AlterPDFParser extends PDFParser {
     public enum ParsePdfMode {
@@ -27,7 +27,7 @@ public class AlterPDFParser extends PDFParser {
     }
 
     // uses this value if it is not set in HttpRequest
-    public ParsePdfMode defaultParseMode = ParsePdfMode.DEFAULT;
+    ParsePdfMode defaultParseMode = ParsePdfMode.DEFAULT;
 
     // Metadata key for giving the document password to the parser
     private static final MediaType MEDIA_TYPE = MediaType.application("pdf");
@@ -42,9 +42,10 @@ public class AlterPDFParser extends PDFParser {
             InputStream stream, ContentHandler handler,
             Metadata metadata, ParseContext context)
             throws IOException, SAXException, TikaException {
-        System.out.println("AlterPDFParser.parse()");
-        HashMap<String, String> requestMap = HttpRequestParamsReader.readQueryParameters(stream);
-        ParsePdfMode pdfParseMode = readParseMode(requestMap);
+
+        HttpRequestParamsReader.getInstance().initialize(stream);
+        HttpRequestParamsReader.getInstance().outIfVerbose("AlterPDFParser.parse()");
+        ParsePdfMode pdfParseMode = getParseMode();
 
         PDFParserConfig sourceConfig = context.get(PDFParserConfig.class, defaultConfig);
         PDFParserConfig localConfig = makeConfigLocalCopy(sourceConfig);
@@ -77,11 +78,11 @@ public class AlterPDFParser extends PDFParser {
             //preproc.removeImagesAlphaChannel(pdfDocument);
 
             if (callShouldHandleXFAOnly(pdfDocument, localConfig)) {
-                System.out.println("AlterPDFParser.parse(callShouldHandleXFAOnly)");
+                HttpRequestParamsReader.getInstance().outIfVerbose("AlterPDFParser.parse(callShouldHandleXFAOnly)");
                 callHandleXFAOnly(pdfDocument, handler, metadata, context);
             }
             else if (localConfig.getOcrStrategy().equals(PDFParserConfig.OCR_STRATEGY.OCR_ONLY)) {
-                System.out.println("AlterPDFParser.parse(OCR_ONLY)");
+                HttpRequestParamsReader.getInstance().outIfVerbose("AlterPDFParser.parse(OCR_ONLY)");
                 metadata.add("X-Parsed-By", TesseractOCRParser.class.toString());
                 callOCR2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
             }
@@ -91,7 +92,7 @@ public class AlterPDFParser extends PDFParser {
                     PdfStripperProcessor.setTextUsingPDFTextStripper(handler, pdfDocument);
                 // smart parsing: PDF or OCR
                 else if (pdfParseMode == ParsePdfMode.PDF_OCR) {
-                    System.out.println("AlterPDFParser.parse(PDF_OCR)");
+                    HttpRequestParamsReader.getInstance().outIfVerbose("AlterPDFParser.parse(PDF_OCR)");
                     PdfContentTypeChecker checker = new PdfContentTypeChecker();
                     PdfContentTypeChecker.PdfContent docType = checker.determineDocContentType(pdfDocument);
                     if (docType != PdfContentTypeChecker.PdfContent.IMAGES)
@@ -102,7 +103,7 @@ public class AlterPDFParser extends PDFParser {
                     }
                 }
                 else { // ... or parse it default Tika-way
-                    System.out.println("AlterPDFParser.parse(callPDF2XHTMLProcess)");
+                    HttpRequestParamsReader.getInstance().outIfVerbose("AlterPDFParser.parse(callPDF2XHTMLProcess)");
                     callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
                 }
             }
@@ -123,15 +124,19 @@ public class AlterPDFParser extends PDFParser {
 
     // method determines what parsing strategy to use
     // from HTTPRequest or the default variable value
-    private ParsePdfMode readParseMode(HashMap<String, String> requestMap) {
-        if (HttpRequestParamsReader.checkParamValue(requestMap,
-                HttpRequestParamsReader.PDF_PARSE_METHOD,
-                HttpRequestParamsReader.PDF_PARSE_METHOD_STRIP))
+    private ParsePdfMode getParseMode() {
+        String parseMode = HttpRequestParamsReader.getInstance().typedParams.get(CommonParseFlag.PDF_PARSE_METHOD);
+        if (parseMode == null || parseMode.length() == 0)
+            parseMode = System.getenv("LEXNLP_TIKA_PARSER_MODE");
+        if (parseMode == null || parseMode.length() == 0)
+            return defaultParseMode;
+        System.err.println("PDF mode read as: " + parseMode);
+
+        if (parseMode.equals(HttpRequestParamsReader.PDF_PARSE_METHOD_STRIP))
             return ParsePdfMode.TEXT_STRIP;
-        if (HttpRequestParamsReader.checkParamValue(requestMap,
-                HttpRequestParamsReader.PDF_PARSE_METHOD,
-                HttpRequestParamsReader.PDF_PARSE_METHOD_PDF_OCR))
+        if (parseMode.equals(HttpRequestParamsReader.PDF_PARSE_METHOD_PDF_OCR))
             return ParsePdfMode.PDF_OCR;
+
         return defaultParseMode;
     }
 

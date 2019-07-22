@@ -5,6 +5,18 @@ import java.lang.reflect.Field;
 public class FieldLookup {
 
     // find field in passed class or one of his ancestors
+    public static Object getFieldValue(Object obj, String fieldName) {
+        Field f = findField(obj.getClass(), fieldName);
+        if (f == null)
+            return null;
+        try {
+            f.setAccessible(true);
+            return f.get(obj);
+        } catch (IllegalAccessException e) {
+            return null;
+        }
+    }
+
     public static Field findField(Class<?> cls, String fieldName) {
         while (true) {
             try {

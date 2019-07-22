@@ -56,6 +56,9 @@ This parameter comes from the plugin. It could have one of the three values
 2) "strip" means the same, but the "printed" text will be obtained by PDFBox PDFTextStripper class
 3) "default" means that the plugin will work as a standard PDFParser plugin
 
+Alternatively, you can set LEXNLP_TIKA_PARSER_MODE environment variable instead of
+passing "pdf-parse" command line argument.
+
 
 - 4.2 - source files
 
@@ -88,4 +91,6 @@ contains unit tests for AlterPDFParser: tests getting text from vector and scann
 
 2.2, 2.3, 2.4) PdfContentImagePreprocessorTest.java, PdfCOntentTypeCheckerTest.java, ShallowCopy.java
 unit tests for PdfContentImagePreprocessor and PdfContentTypeChecker classes
+
+File pom.xml.debug is a copy of pom.xml plus extra dependency for debugging parser with tika-app.
 
