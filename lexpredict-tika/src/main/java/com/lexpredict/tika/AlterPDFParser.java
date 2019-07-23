@@ -27,7 +27,7 @@ public class AlterPDFParser extends PDFParser {
     }
 
     // uses this value if it is not set in HttpRequest
-    ParsePdfMode defaultParseMode = ParsePdfMode.DEFAULT;
+    ParsePdfMode defaultParseMode = ParsePdfMode.PDF_OCR;
 
     // Metadata key for giving the document password to the parser
     private static final MediaType MEDIA_TYPE = MediaType.application("pdf");
