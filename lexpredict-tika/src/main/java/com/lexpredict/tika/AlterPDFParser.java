@@ -12,6 +12,7 @@ import org.apache.tika.metadata.Metadata;
 import org.apache.tika.metadata.PDF;
 import org.apache.tika.mime.MediaType;
 import org.apache.tika.parser.ParseContext;
+import org.apache.tika.parser.ocr.TesseractOCRConfig;
 import org.apache.tika.parser.ocr.TesseractOCRParser;
 import org.apache.tika.parser.pdf.*;
 import org.xml.sax.ContentHandler;
@@ -172,6 +173,12 @@ public class AlterPDFParser extends PDFParser {
                                         ParseContext context, Metadata metadata,
                                         PDFParserConfig config) throws
             ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+
+        TesseractOCRConfig cfg = new TesseractOCRConfig();
+        // here I set default timeout of 2 hours
+        // The calling process should check parsing process and terminate it by timeout
+        cfg.setTimeout(60 * 60 * 2);
+        context.set(TesseractOCRConfig.class, cfg);
 
         PDFParserConfig.OCR_STRATEGY oldOcrStrategy = config.getOcrStrategy();
         boolean oldExtractInlineImages = config.getExtractInlineImages();
