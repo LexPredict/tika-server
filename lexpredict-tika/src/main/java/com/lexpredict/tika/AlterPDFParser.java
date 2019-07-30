@@ -131,8 +131,7 @@ public class AlterPDFParser extends PDFParser {
             parseMode = System.getenv("LEXNLP_TIKA_PARSER_MODE");
         if (parseMode == null || parseMode.length() == 0)
             return defaultParseMode;
-        System.err.println("PDF mode read as: " + parseMode);
-
+        
         if (parseMode.equals(HttpRequestParamsReader.PDF_PARSE_METHOD_STRIP))
             return ParsePdfMode.TEXT_STRIP;
         if (parseMode.equals(HttpRequestParamsReader.PDF_PARSE_METHOD_PDF_OCR))
