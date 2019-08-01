@@ -24,7 +24,7 @@ import java.lang.reflect.Method;
 
 public class AlterPDFParser extends PDFParser {
     public enum ParsePdfMode {
-        DEFAULT, PDF_OCR, TEXT_STRIP
+        DEFAULT, PDF_OCR, PDF_ONLY, TEXT_STRIP
     }
 
     // uses this value if it is not set in HttpRequest
@@ -89,8 +89,15 @@ public class AlterPDFParser extends PDFParser {
             }
             else {
                 // parse document by using PDFStripper
-                if (pdfParseMode == ParsePdfMode.TEXT_STRIP)
+                if (pdfParseMode == ParsePdfMode.TEXT_STRIP) {
+                    HttpRequestParamsReader.getInstance().outIfVerbose("AlterPDFParser.parse(TEXT_STRIP)");
                     PdfStripperProcessor.setTextUsingPDFTextStripper(handler, pdfDocument);
+                }
+                // just PDF parsing
+                else if (pdfParseMode == ParsePdfMode.PDF_ONLY) {
+                    HttpRequestParamsReader.getInstance().outIfVerbose("AlterPDFParser.parse(PDF_ONLY)");
+                    callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
+                }
                 // smart parsing: PDF or OCR
                 else if (pdfParseMode == ParsePdfMode.PDF_OCR) {
                     HttpRequestParamsReader.getInstance().outIfVerbose("AlterPDFParser.parse(PDF_OCR)");
@@ -131,11 +138,13 @@ public class AlterPDFParser extends PDFParser {
             parseMode = System.getenv("LEXNLP_TIKA_PARSER_MODE");
         if (parseMode == null || parseMode.length() == 0)
             return defaultParseMode;
-        
+
         if (parseMode.equals(HttpRequestParamsReader.PDF_PARSE_METHOD_STRIP))
             return ParsePdfMode.TEXT_STRIP;
         if (parseMode.equals(HttpRequestParamsReader.PDF_PARSE_METHOD_PDF_OCR))
             return ParsePdfMode.PDF_OCR;
+        if (parseMode.equals(HttpRequestParamsReader.PDF_PARSE_METHOD_PDF_ONLY))
+            return ParsePdfMode.PDF_ONLY;
 
         return defaultParseMode;
     }
