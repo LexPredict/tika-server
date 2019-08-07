@@ -8,11 +8,11 @@ public class LexPredictTikaCLI extends TikaCLI {
 
     @Override
     public void process(String arg) throws Exception {
-        System.err.println("Manually registering JPEG2000 reader...");
+        System.out.println("Manually registering JPEG2000 reader...");
         IIORegistry registry = IIORegistry.getDefaultInstance();
         registry.registerServiceProvider(new com.github.jaiimageio.jpeg2000.impl.J2KImageReaderSpi());
-        System.err.println("Proceeding to base TIKA CLI...");
+        System.out.println("Proceeding to base TIKA CLI...");
         super.process(arg);
-        System.err.println("TIKA CLI finished.");
+        System.out.println("TIKA CLI finished.");
     }
 }
