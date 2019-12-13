@@ -212,10 +212,19 @@ public class AlterPDFParser extends PDFParser {
     // check whether the method should read XFA (forms) only
     private boolean callShouldHandleXFAOnly(PDDocument pdDocument, PDFParserConfig config)
             throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        boolean xfa = this.checkDocHasXFA(pdDocument);
         Method m = getClass().getSuperclass().getDeclaredMethod("shouldHandleXFAOnly",
-                PDDocument.class, PDFParserConfig.class);
+                boolean.class, PDFParserConfig.class);
         m.setAccessible(true);
-        return (boolean)m.invoke(this, pdDocument, config);
+        return (boolean)m.invoke(this, xfa, config);
+    }
+
+    private boolean checkDocHasXFA(PDDocument pdDocument)
+            throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        Method m = getClass().getSuperclass().getDeclaredMethod("hasXFA",
+                PDDocument.class);
+        m.setAccessible(true);
+        return (boolean)m.invoke(this, pdDocument);
     }
 
     // read XFA forms' content
