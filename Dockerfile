@@ -1,6 +1,6 @@
 FROM ubuntu:18.04
 
-ENV TIKA_VERSION 1.22
+ENV TIKA_VERSION 1.23
 ENV TIKA_SERVER_URL https://www.apache.org/dist/tika/tika-server-$TIKA_VERSION.jar
 
 
