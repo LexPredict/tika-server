@@ -10,6 +10,7 @@ import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.graphics.PDXObject;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.text.PDFTextStripper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,9 +25,15 @@ public class PdfContentTypeChecker {
 
     private PdfContent docContent = PdfContent.EMPTY;
 
+    private int pageCount = 0;
+
     private int imagesCount = 0;
 
     private int textBlocks = 0;
+
+    private int fullTextLength = 0;
+
+    private PDFTextStripper pdfTextStripper;
 
     // reads PDDocument from the stream and calls determineDocContentType
     public PdfContent determineDocContentType(InputStream stream) {
@@ -38,27 +45,32 @@ public class PdfContentTypeChecker {
         }
     }
 
-    public PdfContent determineDocContentType(PDDocument document) {
+    public PdfContent determineDocContentType(PDDocument document) throws IOException {
         try {
             calculateObjectsInDocument(document);
         } catch (Exception e) {
             return PdfContent.UNKNOWN;
         }
         int totalCount = imagesCount + textBlocks;
-        docContent = totalCount == 0 ? PdfContent.EMPTY :
-                imagesCount > 0 && textBlocks > 0 ? PdfContent.MIXED :
-                        imagesCount > 0 ? PdfContent.IMAGES : PdfContent.TEXT;
+        docContent = totalCount == 0 ? PdfContent.EMPTY
+                : imagesCount > 0 && textBlocks > 0 && fullTextLength > 500 * pageCount ? PdfContent.MIXED
+                : imagesCount > 0 ? PdfContent.IMAGES
+                : PdfContent.TEXT;
         return docContent;
     }
 
     // calculate count of text blocks (textBlocks member) and
     // images (imagesCount) in the document
-    private void calculateObjectsInDocument(PDDocument document) {
+    private void calculateObjectsInDocument(PDDocument document) throws IOException {
+        this.pdfTextStripper = new PDFTextStripper();
+
         try {
             PDPageTree allPages = document.getDocumentCatalog().getPages();
+            this.pageCount = allPages.getCount();
             for (int i = 0; i < allPages.getCount(); i++) {
-                PDPage page = (PDPage) allPages.get(i);
+                PDPage page = allPages.get(i);
                 readObjectsOnPage(page);
+                calculateTextLengthOnPage(document, i + 1);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -69,6 +81,17 @@ public class PdfContentTypeChecker {
     private void readObjectsOnPage(PDPage page) throws IOException {
         getImagesFromResources(page.getResources());
         calculateTextObjectsOnPage(page);
+    }
+
+
+    private void calculateTextLengthOnPage(PDDocument doc, int pageNum1Based) throws IOException {
+        this.pdfTextStripper.setStartPage(pageNum1Based);
+        this.pdfTextStripper.setEndPage(pageNum1Based);
+        String text = this.pdfTextStripper.getText(doc);
+        if (text != null) {
+            text = text.trim().replaceAll("\\s+", " ");
+            this.fullTextLength += text.length();
+        }
     }
 
     private void calculateTextObjectsOnPage(PDPage page) throws IOException {

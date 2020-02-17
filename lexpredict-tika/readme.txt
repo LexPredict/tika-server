@@ -32,6 +32,11 @@ Suppose we have a following folders and files:
 first thing to do is to
 
 
+To debug processing a single file in IDE:
+Main class:        org.apache.tika.cli.TikaCLI
+Program arguments: --config=example_tika.config -J -t -eutf-8 tmp/your_file.pdf
+
+
 - 3.1 - run Tika server
 
 Currently we are in "parsed" directory. Our tika server has version 1.20, our plugin has version 1.0.
