@@ -53,7 +53,7 @@ public class PdfContentTypeChecker {
         }
         int totalCount = imagesCount + textBlocks;
         docContent = totalCount == 0 ? PdfContent.EMPTY
-                : imagesCount > 0 && textBlocks > 0 && fullTextLength > 500 * pageCount ? PdfContent.MIXED
+                : imagesCount > 0 && textBlocks > 0 ? PdfContent.MIXED
                 : imagesCount > 0 ? PdfContent.IMAGES
                 : PdfContent.TEXT;
         return docContent;
