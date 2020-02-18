@@ -17,6 +17,7 @@ import org.apache.tika.parser.ocr.TesseractOCRParser;
 import org.apache.tika.parser.pdf.*;
 import org.xml.sax.ContentHandler;
 import org.xml.sax.SAXException;
+
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -81,13 +82,11 @@ public class AlterPDFParser extends PDFParser {
             if (callShouldHandleXFAOnly(pdfDocument, localConfig)) {
                 HttpRequestParamsReader.getInstance().outIfVerbose("AlterPDFParser.parse(callShouldHandleXFAOnly)");
                 callHandleXFAOnly(pdfDocument, handler, metadata, context);
-            }
-            else if (localConfig.getOcrStrategy().equals(PDFParserConfig.OCR_STRATEGY.OCR_ONLY)) {
+            } else if (localConfig.getOcrStrategy().equals(PDFParserConfig.OCR_STRATEGY.OCR_ONLY)) {
                 HttpRequestParamsReader.getInstance().outIfVerbose("AlterPDFParser.parse(OCR_ONLY)");
                 metadata.add("X-Parsed-By", TesseractOCRParser.class.toString());
                 callOCR2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
-            }
-            else {
+            } else {
                 // parse document by using PDFStripper
                 if (pdfParseMode == ParsePdfMode.TEXT_STRIP) {
                     HttpRequestParamsReader.getInstance().outIfVerbose("AlterPDFParser.parse(TEXT_STRIP)");
@@ -96,7 +95,7 @@ public class AlterPDFParser extends PDFParser {
                 // just PDF parsing
                 else if (pdfParseMode == ParsePdfMode.PDF_ONLY) {
                     HttpRequestParamsReader.getInstance().outIfVerbose("AlterPDFParser.parse(PDF_ONLY)");
-                    callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
+                    callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig, true);
                 }
                 // smart parsing: PDF or OCR
                 else if (pdfParseMode == ParsePdfMode.PDF_OCR) {
@@ -104,15 +103,14 @@ public class AlterPDFParser extends PDFParser {
                     PdfContentTypeChecker checker = new PdfContentTypeChecker();
                     PdfContentTypeChecker.PdfContent docType = checker.determineDocContentType(pdfDocument);
                     if (docType != PdfContentTypeChecker.PdfContent.IMAGES)
-                        callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
+                        callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig, false);
                     else {
                         metadata.add("X-Parsed-By", TesseractOCRParser.class.toString());
                         callOCR2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
                     }
-                }
-                else { // ... or parse it default Tika-way
+                } else { // ... or parse it default Tika-way
                     HttpRequestParamsReader.getInstance().outIfVerbose("AlterPDFParser.parse(callPDF2XHTMLProcess)");
-                    callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
+                    callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig, false);
                 }
             }
 
@@ -165,21 +163,30 @@ public class AlterPDFParser extends PDFParser {
     // because this class is private (package restricted) and I don't
     // want to copy the class's code and a bunsh of dependent modules into plugin
     private void callPDF2XHTMLProcess(PDDocument document, ContentHandler handler,
-                                        ParseContext context, Metadata metadata,
-                                        PDFParserConfig config) throws
+                                      ParseContext context, Metadata metadata,
+                                      PDFParserConfig config, boolean noOCR) throws
             ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Class c = Class.forName("org.apache.tika.parser.pdf.PDF2XHTML");
         Method m = c.getDeclaredMethod("process", PDDocument.class, ContentHandler.class, ParseContext.class, Metadata.class,
                 PDFParserConfig.class);
         m.setAccessible(true);
+
+
+        PDFParserConfig.OCR_STRATEGY oldOcrStrategy = config.getOcrStrategy();
+
+        config.setOcrStrategy(noOCR ? PDFParserConfig.OCR_STRATEGY.NO_OCR
+                : PDFParserConfig.OCR_STRATEGY.OCR_AND_TEXT_EXTRACTION);
+
         m.invoke(null, document, handler, context, metadata, config);
+
+        config.setOcrStrategy(oldOcrStrategy);
     }
 
     // process PDF as a scanned image set
     // again uses reflection
     private void callOCR2XHTMLProcess(PDDocument document, ContentHandler handler,
-                                        ParseContext context, Metadata metadata,
-                                        PDFParserConfig config) throws
+                                      ParseContext context, Metadata metadata,
+                                      PDFParserConfig config) throws
             ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
 
         TesseractOCRConfig cfg = new TesseractOCRConfig();
@@ -193,7 +200,7 @@ public class AlterPDFParser extends PDFParser {
         boolean oldExtractUniqueInlineImagesOnly = config.getExtractUniqueInlineImagesOnly();
 
         // explicitly tells Tika to use OCR
-        config.setOcrStrategy(PDFParserConfig.OCR_STRATEGY.OCR_AND_TEXT_EXTRACTION);
+        config.setOcrStrategy(PDFParserConfig.OCR_STRATEGY.OCR_ONLY);
         config.setExtractInlineImages(true);
         config.setExtractUniqueInlineImagesOnly(false);
 
@@ -216,7 +223,7 @@ public class AlterPDFParser extends PDFParser {
         Method m = getClass().getSuperclass().getDeclaredMethod("shouldHandleXFAOnly",
                 boolean.class, PDFParserConfig.class);
         m.setAccessible(true);
-        return (boolean)m.invoke(this, xfa, config);
+        return (boolean) m.invoke(this, xfa, config);
     }
 
     private boolean checkDocHasXFA(PDDocument pdDocument)
@@ -224,12 +231,12 @@ public class AlterPDFParser extends PDFParser {
         Method m = getClass().getSuperclass().getDeclaredMethod("hasXFA",
                 PDDocument.class);
         m.setAccessible(true);
-        return (boolean)m.invoke(this, pdDocument);
+        return (boolean) m.invoke(this, pdDocument);
     }
 
     // read XFA forms' content
     private void callHandleXFAOnly(PDDocument pdDocument, ContentHandler handler,
-                               Metadata metadata, ParseContext context)
+                                   Metadata metadata, ParseContext context)
             throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
         Method m = getClass().getSuperclass().getDeclaredMethod("handleXFAOnly",
                 PDDocument.class, ContentHandler.class, Metadata.class, ParseContext.class);
@@ -253,7 +260,7 @@ public class AlterPDFParser extends PDFParser {
                 Metadata.class, ParseContext.class);
         m.setAccessible(true);
         Object retVal = m.invoke(this, metadata, context);
-        return (String)retVal;
+        return (String) retVal;
     }
 
     // make a copy because I don't want to modify original config params
