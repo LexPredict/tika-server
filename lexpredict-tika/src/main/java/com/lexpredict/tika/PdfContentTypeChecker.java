@@ -15,6 +15,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 
+
+// import org.apache.tika.parser.pdf.PDFParser;
+// class MyPDF2XHTML extends PDF2XHTML {
+
+
+
 // determine content of the PDDocument passed:
 // whether it contains text, images, text + images or just nothing
 public class PdfContentTypeChecker {
@@ -27,6 +33,14 @@ public class PdfContentTypeChecker {
     private int imagesCount = 0;
 
     private int textBlocks = 0;
+
+    public int getImagesCount() {
+        return imagesCount;
+    }
+
+    public int getTextBlocks() {
+        return textBlocks;
+    }
 
     // reads PDDocument from the stream and calls determineDocContentType
     public PdfContent determineDocContentType(InputStream stream) {
