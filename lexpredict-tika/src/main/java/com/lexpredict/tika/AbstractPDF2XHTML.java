@@ -612,6 +612,10 @@ class AbstractPDF2XHTML extends PDFTextStripper {
             handleDestinationOrAction(additionalActions.getWC(), AbstractPDF2XHTML.ActionTrigger.BEFORE_DOCUMENT_CLOSE);
             handleDestinationOrAction(additionalActions.getWP(), AbstractPDF2XHTML.ActionTrigger.BEFORE_DOCUMENT_PRINT);
             handleDestinationOrAction(additionalActions.getWS(), AbstractPDF2XHTML.ActionTrigger.BEFORE_DOCUMENT_SAVE);
+
+            if (cdataContent.length() > 0)
+                dumpCDATA();
+
             xhtml.endDocument();
         } catch (TikaException e) {
             throw new IOExceptionWithCause("Unable to end a document", e);
@@ -885,8 +889,6 @@ class AbstractPDF2XHTML extends PDFTextStripper {
             }
             pageIndex++;
         }
-        if (cdataContent.length() > 0)
-            dumpCDATA();
     }
 
     @Override

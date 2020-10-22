@@ -336,10 +336,6 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
                 processPage(page);
             }
         }
-
-        // store CDATA
-        if (cdataContent.length() > 0)
-            dumpCDATA();
     }
 
     protected void dumpCDATA() throws SAXException {
