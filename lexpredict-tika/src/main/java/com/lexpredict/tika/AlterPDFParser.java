@@ -163,21 +163,17 @@ public class AlterPDFParser extends PDFParser {
     // because this class is private (package restricted) and I don't
     // want to copy the class's code and a bunsh of dependent modules into plugin
     private void callPDF2XHTMLProcess(PDDocument document, ContentHandler handler,
-                                      ParseContext context, Metadata metadata,
-                                      PDFParserConfig config, boolean noOCR) throws
-            ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        Class c = Class.forName("org.apache.tika.parser.pdf.PDF2XHTML");
-        Method m = c.getDeclaredMethod("process", PDDocument.class, ContentHandler.class, ParseContext.class, Metadata.class,
-                PDFParserConfig.class);
-        m.setAccessible(true);
-
+                                        ParseContext context, Metadata metadata,
+                                        PDFParserConfig config,
+                                        Boolean noOCR) throws
+            TikaException, SAXException {
 
         PDFParserConfig.OCR_STRATEGY oldOcrStrategy = config.getOcrStrategy();
 
         config.setOcrStrategy(noOCR ? PDFParserConfig.OCR_STRATEGY.NO_OCR
                 : PDFParserConfig.OCR_STRATEGY.OCR_AND_TEXT_EXTRACTION);
 
-        m.invoke(null, document, handler, context, metadata, config);
+        PDF2XHTML.process(document, handler, context, metadata, config);
 
         config.setOcrStrategy(oldOcrStrategy);
     }
@@ -268,5 +264,57 @@ public class AlterPDFParser extends PDFParser {
         PDFParserConfig cpy = new PDFParserConfig();
         ShallowCopy.copyFields(srcConfig, cpy);
         return cpy;
+    }
+
+    public static void main(String args[]) throws IOException {
+        if (args.length < 2) return;
+
+        if (args[0].equals("--flatten")) {
+            // flatten document's images by redrawing them on a white background
+            String srcPath = args[1], dstPath = srcPath + ".processed";
+            if (args.length > 2)
+                dstPath = args[2];
+
+            File inputFile = new File(srcPath);
+            FileInputStream fis = new FileInputStream(inputFile);
+
+            try {
+                PDDocument doc = PDDocument.load(fis);
+
+                PdfContentImagePreprocessor preproc = new PdfContentImagePreprocessor();
+                boolean hasReplaced = preproc.removeImagesAlphaChannel(doc);
+                if (hasReplaced) {
+                    System.out.println("PDF file images were updated");
+                    doc.save(dstPath);
+                } else {
+                    System.out.println("PDF file was not changed");
+                }
+            } catch (Exception e) {
+                System.out.println("Error occurred:");
+                System.out.println(e.toString());
+                fis.close();
+            }
+        }
+
+        if (args[0].equals("--explore")) {
+            PdfContentTypeChecker checker = new PdfContentTypeChecker();
+            String srcPath = args[1];
+            File inputFile = new File(srcPath);
+            FileInputStream fis = new FileInputStream(inputFile);
+
+            try {
+                PDDocument doc = PDDocument.load(fis);
+                checker.determineDocContentType(doc);
+
+                System.out.printf("images:%d,text_blocks:%d%n",
+                        checker.getImagesCount(),
+                        checker.getTextBlocks());
+
+            } catch (Exception e) {
+                System.out.println("Error occurred:");
+                System.out.println(e.toString());
+                fis.close();
+            }
+        }
     }
 }

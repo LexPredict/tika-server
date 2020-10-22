@@ -209,6 +209,10 @@ public abstract class TikaTest {
         }
     }
 
+    public XMLResult getXML(InputStream is, Parser parser, ParseContext context) throws Exception{
+        return getXML(is, parser, new Metadata(), context);
+    }
+
     protected List<Metadata> getRecursiveMetadata(String filePath) throws Exception {
         return getRecursiveMetadata(filePath, new ParseContext());
     }
