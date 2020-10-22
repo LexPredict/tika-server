@@ -30,8 +30,11 @@ import org.apache.pdfbox.pdmodel.interactive.pagenavigation.PDThreadBead;
 import org.apache.pdfbox.text.TextPosition;
 import org.apache.pdfbox.text.TextPositionComparator;
 import org.apache.pdfbox.util.QuickSort;
+import org.xml.sax.SAXException;
+
 import java.text.Bidi;
 import java.text.Normalizer;
+import java.text.NumberFormat;
 import java.util.*;
 import java.util.regex.Pattern;
 import java.io.IOException;
@@ -47,8 +50,14 @@ import static org.apache.commons.lang3.math.NumberUtils.min;
 
 public class PDFTextStripper extends LegacyPDFStreamEngine
 {
+    // NO_EXTRA_DETAIL,       default Tika XHTML output
+    // COORDS_EMBEDDED,       XHTML with all text symbols' coords in <span pos="...">
+    // COORDS_EMBEDDED_AREA,  XHTML with text symbols' coords in <span pos="..."> per text line
+    // COORDS_FLAT            XHTML with all text symbols' coords in one big CDATA tag
     public enum OutputDetalization {
-        NO_EXTRA_DETAIL, COORDS_ONLY, COORDS_FONT, FULL
+        NO_EXTRA_DETAIL,
+        COORDS_EMBEDDED,
+        COORDS_FLAT
     }
 
     private static float defaultIndentThreshold = 2.0f;
@@ -169,7 +178,9 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
 
     private List<PDRectangle> beadRectangles = null;
 
-    private OutputDetalization detalization = OutputDetalization.NO_EXTRA_DETAIL;
+    protected OutputDetalization detalization = OutputDetalization.NO_EXTRA_DETAIL;
+
+    protected NumberFormat defaultNumberFormat = NumberFormat.getInstance(new Locale("en", "US"));
 
     /**
      * The charactersByArticle is used to extract text by article divisions. For example a PDF that has two columns like
@@ -197,6 +208,8 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
      */
     private boolean inParagraph;
 
+    protected StringBuffer cdataContent = new StringBuffer();
+
     /**
      * Instantiate a new PDFTextStripper object.
      *
@@ -204,6 +217,8 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
      */
     public PDFTextStripper() throws IOException
     {
+        defaultNumberFormat.setMinimumFractionDigits(0);
+        defaultNumberFormat.setMaximumFractionDigits(4);
         detalization = getOutputDetalization();
     }
 
@@ -211,12 +226,10 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
         String parseMode = System.getenv("LEXNLP_TIKA_XML_DETAIL");
         if (parseMode == null || parseMode.length() == 0)
             return OutputDetalization.NO_EXTRA_DETAIL;
-        if (parseMode.equals("coords"))
-            return OutputDetalization.COORDS_ONLY;
-        if (parseMode.equals("coords_font"))
-            return OutputDetalization.COORDS_FONT;
-        if (parseMode.equals("full"))
-            return OutputDetalization.FULL;
+        if (parseMode.equals("coords_embedded"))
+            return OutputDetalization.COORDS_EMBEDDED;
+        if (parseMode.equals("coords_flat"))
+            return OutputDetalization.COORDS_FLAT;
         return OutputDetalization.NO_EXTRA_DETAIL;
     }
 
@@ -228,8 +241,7 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
      * @return The text of the PDF document.
      * @throws IOException if the doc state is invalid or it is encrypted.
      */
-    public String getText(PDDocument doc) throws IOException
-    {
+    public String getText(PDDocument doc) throws IOException, SAXException {
         StringWriter outputStream = new StringWriter();
         writeText(doc, outputStream);
         return outputStream.toString();
@@ -257,8 +269,7 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
      *
      * @throws IOException If the doc is in an invalid state.
      */
-    public void writeText(PDDocument doc, Writer outputStream) throws IOException
-    {
+    public void writeText(PDDocument doc, Writer outputStream) throws IOException, SAXException {
         resetEngine();
         document = doc;
         output = outputStream;
@@ -281,8 +292,7 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
      *
      * @throws IOException If there is an error parsing the text.
      */
-    protected void processPages(PDPageTree pages) throws IOException
-    {
+    protected void processPages(PDPageTree pages) throws IOException, SAXException {
         PDPage startBookmarkPage = startBookmark == null ? null
                 : startBookmark.findDestinationPage(document);
         if (startBookmarkPage != null)
@@ -326,6 +336,13 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
                 processPage(page);
             }
         }
+
+        // store CDATA
+        if (cdataContent.length() > 0)
+            dumpCDATA();
+    }
+
+    protected void dumpCDATA() throws SAXException {
     }
 
     /**
@@ -1741,39 +1758,16 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
         {
             PDFTextStripper.WordWithTextPositions word = line.get(i);
 
-            if (detalization == OutputDetalization.FULL)
+            if (detalization == OutputDetalization.COORDS_EMBEDDED)
                 writeString(word.getText(), word.getTextPositions());
-            else if (detalization == OutputDetalization.COORDS_ONLY)
+            else if (detalization == OutputDetalization.COORDS_FLAT)
             {
+                writeString(word.getText(), new ArrayList<TextPosition>());
+                // store coordinates for CDATA
                 List<TextPosition> positions = word.getTextPositions();
-                TextPosition firstPos = positions.get(0);
-                float startX = min(firstPos.getX(), firstPos.getEndX());
-                float startY = min(firstPos.getY(), firstPos.getEndY());
-                float endX = max(firstPos.getX(), firstPos.getEndX());
-                float endY = max(firstPos.getY(), firstPos.getEndY());
-                for (TextPosition pos: positions)
-                {
-                    startX = min(startX, pos.getX(), pos.getEndX());
-                    startY = min(startY, pos.getY(), pos.getEndY());
-                    endX = max(startX, pos.getX(), pos.getEndX());
-                    endY = max(startY, pos.getY(), pos.getEndY());
-                }
-                TextPosition boundPos = new TextPosition(
-                        firstPos.getRotation(),
-                        firstPos.getPageWidth(),
-                        firstPos.getPageHeight(),
-                        firstPos.getTextMatrix(),
-                        endX, endY,
-                        firstPos.getHeight(),
-                        0, // firstPos.getIndividualWidths(),
-                        firstPos.getWidthOfSpace(),
-                        firstPos.getUnicode(),
-                        firstPos.getCharacterCodes(),
-                        firstPos.getFont(),
-                        firstPos.getFontSize(),
-                        (int)firstPos.getFontSizeInPt());
-
-                writeString(word.getText(), boundPos);
+                for (TextPosition pos : positions)
+                    cdataContent.append(formatFloatNumbers("\n",
+                            pos.getX(), pos.getY(), pos.getWidth(), pos.getHeight()));
             }
             else
                 writeString(word.getText());
@@ -1782,6 +1776,18 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
                 writeWordSeparator();
             }
         }
+    }
+
+    protected String formatFloatNumbers(String termination, float ...n)
+    {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < n.length; i++) {
+            sb.append(defaultNumberFormat.format(n[i]));
+            if (i < n.length - 1)
+                sb.append(",");
+        }
+        sb.append(termination);
+        return sb.toString();
     }
 
     /**

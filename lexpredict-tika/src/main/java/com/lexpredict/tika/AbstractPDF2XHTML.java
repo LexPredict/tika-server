@@ -186,16 +186,18 @@ class AbstractPDF2XHTML extends PDFTextStripper {
     protected void startPage(PDPage page) throws IOException {
         try {
             AttributesImpl attrs = new AttributesImpl();
-            StringBuilder sb = new StringBuilder();
-            PDRectangle area = page.getMediaBox();
-            sb.append(area.getLowerLeftX());
-            sb.append(",");
-            sb.append(area.getLowerLeftY());
-            sb.append(",");
-            sb.append(area.getWidth());
-            sb.append(",");
-            sb.append(area.getHeight());
-            attrs.addAttribute("", "area", "area", "string", sb.toString());
+            if (this.detalization != OutputDetalization.NO_EXTRA_DETAIL) {
+                StringBuilder sb = new StringBuilder();
+                PDRectangle area = page.getMediaBox();
+                sb.append(area.getLowerLeftX());
+                sb.append(",");
+                sb.append(area.getLowerLeftY());
+                sb.append(",");
+                sb.append(area.getWidth());
+                sb.append(",");
+                sb.append(area.getHeight());
+                attrs.addAttribute("", "area", "area", "string", sb.toString());
+            }
             attrs.addAttribute("", "class", "class", "string", "page");
             xhtml.startElement("div", attrs);
         } catch (SAXException e) {
@@ -865,7 +867,7 @@ class AbstractPDF2XHTML extends PDFTextStripper {
      * @throws IOException
      */
     @Override
-    protected void processPages(PDPageTree pages) throws IOException {
+    protected void processPages(PDPageTree pages) throws IOException, SAXException {
         //we currently need this hack because we aren't able to increment
         //the private currentPageNo in PDFTextStripper,
         //and PDFTextStripper's processPage relies on that variable
@@ -883,6 +885,8 @@ class AbstractPDF2XHTML extends PDFTextStripper {
             }
             pageIndex++;
         }
+        if (cdataContent.length() > 0)
+            dumpCDATA();
     }
 
     @Override

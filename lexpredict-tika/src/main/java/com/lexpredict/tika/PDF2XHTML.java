@@ -347,19 +347,16 @@ class PDF2XHTML extends AbstractPDF2XHTML {
     protected void writeString(String text, List<TextPosition> textPositions) throws IOException
     {
         try {
-            StringBuilder posStr = new StringBuilder();
-            for (TextPosition pos : textPositions) {
-                posStr.append(pos.getX());
-                posStr.append(",");
-                posStr.append(pos.getY());
-                posStr.append(",");
-                posStr.append(pos.getWidth());
-                posStr.append(",");
-                posStr.append(pos.getHeight());
-                posStr.append(";");
-            }
             AttributesImpl atr = new AttributesImpl();
-            atr.addAttribute("", "pos", "pos", "string", posStr.toString());
+            if (textPositions.size() > 0) {
+                StringBuilder posStr = new StringBuilder();
+                for (TextPosition pos : textPositions)
+                    posStr.append(
+                            formatFloatNumbers(";",
+                            pos.getX(), pos.getY(),
+                            pos.getWidth(), pos.getHeight()));
+                atr.addAttribute("", "pos", "pos", "string", posStr.toString());
+            }
             xhtml.startElement("span", atr);
             xhtml.characters(text);
             xhtml.endElement("span");
@@ -367,6 +364,13 @@ class PDF2XHTML extends AbstractPDF2XHTML {
             throw new IOException(
                     "Unable to write a string: " + text, e);
         }
+    }
+
+    @Override
+    protected void dumpCDATA() throws SAXException {
+        xhtml.startElement("![CDATA[");
+        xhtml.characters(cdataContent.toString());
+        xhtml.endElement("]]");
     }
 
     @Override
