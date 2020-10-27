@@ -367,6 +367,37 @@ class PDF2XHTML extends AbstractPDF2XHTML {
     }
 
     @Override
+    protected String normalizeString(
+            String text,
+            List<TextPosition> textPositions) {
+        if (text == null || text.length() == 0)
+            return "";
+
+        // replace \r\n with \n
+        while (true) {
+            int rnIndex = text.indexOf("\r\n");
+            if (rnIndex < 0) break;
+            text = text.substring(0, rnIndex) + text.substring(rnIndex + 1, text.length());
+            if (rnIndex < textPositions.size())
+                textPositions.remove(rnIndex);
+        }
+        // replace \r (\f) with \n
+        text = text.replace('\r', '\n');
+        text = text.replace('\f', '\n');
+
+        StringBuilder mappedString = new StringBuilder();
+        char[] charArray = text.toCharArray();
+        for (int i = 0; i < charArray.length; i++) {
+            if (!xhtml.isCharacterInvalid(charArray[i])) {
+                mappedString.append(charArray[i]);
+                continue;
+            }
+            mappedString.append("?");
+        }
+        return mappedString.toString();
+    }
+
+    @Override
     protected void dumpCDATA() throws SAXException {
         xhtml.startElement("![CDATA[");
         xhtml.characters(cdataContent.toString());

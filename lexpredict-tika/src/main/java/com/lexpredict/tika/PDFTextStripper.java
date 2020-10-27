@@ -1753,14 +1753,16 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
         for (int i = 0; i < numberOfStrings; i++)
         {
             PDFTextStripper.WordWithTextPositions word = line.get(i);
+            String text = word.getText();
+            List<TextPosition> positions = word.getTextPositions();
+            text = normalizeString(text, positions);
 
             if (detalization == OutputDetalization.COORDS_EMBEDDED)
-                writeString(word.getText(), word.getTextPositions());
+                writeString(text, positions);
             else if (detalization == OutputDetalization.COORDS_FLAT)
             {
-                writeString(word.getText(), new ArrayList<TextPosition>());
+                writeString(text, new ArrayList<TextPosition>());
                 // store coordinates for CDATA
-                List<TextPosition> positions = word.getTextPositions();
                 for (TextPosition pos : positions)
                     cdataContent.append(formatFloatNumbers("\n",
                             pos.getX(), pos.getY(), pos.getWidth(), pos.getHeight()));
@@ -1768,10 +1770,14 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
             else
                 writeString(word.getText());
             if (i < numberOfStrings - 1)
-            {
                 writeWordSeparator();
-            }
         }
+    }
+
+    protected String normalizeString(
+            String text,
+            List<TextPosition> textPositions) {
+        return text;
     }
 
     protected String formatFloatNumbers(String termination, float ...n)

@@ -74,18 +74,18 @@ public class AlterPDFParserTest extends TikaTest {
     }
 
     @Test
-    public void testParseXhtmlFullDetail() throws Exception {
+    public void testParseXhtmlCoordsEmbedded() throws Exception {
         String oldSysEnv = setEnvVar("LEXNLP_TIKA_XML_DETAIL", "coords_embedded");
-        String text = getTextFromDoc("/test-documents/sample_table.pdf",
+        String text = getTextFromDoc("/test-documents/industrial developing authority.pdf",
                 AlterPDFParser.ParsePdfMode.PDF_ONLY, "xml");
         setEnvVar("LEXNLP_TIKA_XML_DETAIL", oldSysEnv);
         assertTrue(text.length() > 50);
     }
 
     @Test
-    public void testParseXhtmlSpanBounds() throws Exception {
+    public void testParseXhtmlCoordsFlat() throws Exception {
         String oldSysEnv = setEnvVar("LEXNLP_TIKA_XML_DETAIL", "coords_flat");
-        String text = getTextFromDoc("/test-documents/sample_table.pdf",
+        String text = getTextFromDoc("/test-documents/industrial developing authority.pdf",
                 AlterPDFParser.ParsePdfMode.PDF_ONLY, "xml");
         setEnvVar("LEXNLP_TIKA_XML_DETAIL", oldSysEnv);
         assertTrue(text.length() > 50);

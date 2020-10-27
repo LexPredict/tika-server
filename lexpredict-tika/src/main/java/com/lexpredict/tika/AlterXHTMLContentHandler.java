@@ -8,4 +8,8 @@ class AlterXHTMLContentHandler extends XHTMLContentHandler {
     public AlterXHTMLContentHandler(ContentHandler handler, Metadata metadata) {
         super(handler, metadata);
     }
+
+    public boolean isCharacterInvalid(char c) {
+        return this.isInvalid(c);
+    }
 }
