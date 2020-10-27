@@ -16,6 +16,24 @@
  *
  * Modifications copyright (C) 2020 ContraxSuite, LLC
  */
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * Modifications copyright (C) 2020 ContraxSuite, LLC
+ */
 package com.lexpredict.tika;
 
 import org.apache.pdfbox.cos.COSArray;
@@ -27,6 +45,7 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.PDResources;
+import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.graphics.PDXObject;
 import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceGray;
 import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB;
@@ -369,17 +388,20 @@ class PDF2XHTML extends AbstractPDF2XHTML {
     @Override
     protected String normalizeString(
             String text,
-            List<TextPosition> textPositions) {
+            List<TextPosition> textPositions,
+            boolean tryFontMapping) throws IOException {
         if (text == null || text.length() == 0)
             return "";
 
-        // replace \r\n with \n
-        while (true) {
-            int rnIndex = text.indexOf("\r\n");
-            if (rnIndex < 0) break;
-            text = text.substring(0, rnIndex) + text.substring(rnIndex + 1, text.length());
-            if (rnIndex < textPositions.size())
-                textPositions.remove(rnIndex);
+        if (tryFontMapping) {
+            // replace \r\n with \n
+            while (true) {
+                int rnIndex = text.indexOf("\r\n");
+                if (rnIndex < 0) break;
+                text = text.substring(0, rnIndex) + text.substring(rnIndex + 1);
+                if (rnIndex < textPositions.size())
+                    textPositions.remove(rnIndex);
+            }
         }
         // replace \r (\f) with \n
         text = text.replace('\r', '\n');
@@ -392,7 +414,17 @@ class PDF2XHTML extends AbstractPDF2XHTML {
                 mappedString.append(charArray[i]);
                 continue;
             }
-            mappedString.append("?");
+            if (tryFontMapping) {
+                PDFont txtFont = textPositions.get(i).getFont();
+                if (txtFont == null) {
+                    mappedString.append('?');
+                    continue;
+                }
+                String uniStr = txtFont.toUnicode(charArray[i]);
+                uniStr = normalizeString(uniStr, textPositions, false);
+                mappedString.append(uniStr == null || uniStr.length() == 0 ? "?" : uniStr);
+            } else
+                mappedString.append("?");
         }
         return mappedString.toString();
     }

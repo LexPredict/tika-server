@@ -21,10 +21,15 @@ package com.lexpredict.tika;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.pdfbox.cos.COSBase;
+import org.apache.pdfbox.cos.COSName;
+import org.apache.pdfbox.cos.COSStream;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageTree;
+import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.interactive.documentnavigation.outline.PDOutlineItem;
 import org.apache.pdfbox.pdmodel.interactive.pagenavigation.PDThreadBead;
 import org.apache.pdfbox.text.TextPosition;
@@ -32,17 +37,12 @@ import org.apache.pdfbox.text.TextPositionComparator;
 import org.apache.pdfbox.util.QuickSort;
 import org.xml.sax.SAXException;
 
+import java.io.*;
 import java.text.Bidi;
 import java.text.Normalizer;
 import java.text.NumberFormat;
 import java.util.*;
 import java.util.regex.Pattern;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.LineNumberReader;
-import java.io.StringWriter;
-import java.io.Writer;
 
 import static org.apache.commons.lang3.math.NumberUtils.max;
 import static org.apache.commons.lang3.math.NumberUtils.min;
@@ -1755,7 +1755,7 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
             PDFTextStripper.WordWithTextPositions word = line.get(i);
             String text = word.getText();
             List<TextPosition> positions = word.getTextPositions();
-            text = normalizeString(text, positions);
+            text = normalizeString(text, positions, true);
 
             if (detalization == OutputDetalization.COORDS_EMBEDDED)
                 writeString(text, positions);
@@ -1776,7 +1776,8 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
 
     protected String normalizeString(
             String text,
-            List<TextPosition> textPositions) {
+            List<TextPosition> textPositions,
+            boolean tryFontMapping) throws IOException {
         return text;
     }
 
