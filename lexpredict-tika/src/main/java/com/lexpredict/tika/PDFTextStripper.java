@@ -1805,15 +1805,24 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
         StringBuilder lineBuilder = new StringBuilder();
         List<TextPosition> wordPositions = new ArrayList<TextPosition>();
 
-        for (PDFTextStripper.LineItem item : line)
-        {
-            lineBuilder = normalizeAdd(normalized, lineBuilder, wordPositions, item);
+        for (PDFTextStripper.LineItem item : line) {
+            if (item.isWordSeparator()) {
+                if (lineBuilder.length() > 0)
+                    normalized.add(createWord(lineBuilder.toString(), wordPositions));
+                lineBuilder = new StringBuilder();
+                wordPositions = new ArrayList<TextPosition>();
+                continue;
+            }
+            String txt = item.getTextPosition().getUnicode();
+            // some character codes (i.e. 30) produce multiple Unicode characters!
+            // (30 -> "fi")
+            for (char c : txt.toCharArray()) {
+                lineBuilder.append(c);
+                wordPositions.add(item.getTextPosition());
+            }
         }
-
         if (lineBuilder.length() > 0)
-        {
             normalized.add(createWord(lineBuilder.toString(), wordPositions));
-        }
         return normalized;
     }
 
