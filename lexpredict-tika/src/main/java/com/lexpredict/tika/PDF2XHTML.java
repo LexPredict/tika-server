@@ -433,9 +433,9 @@ class PDF2XHTML extends AbstractPDF2XHTML {
     protected void dumpCDATA() throws SAXException {
         String containerName = "pdf-coordinates style=\"display: none\"";
         xhtml.startElement("", containerName, containerName, new AttributesImpl());
-        xhtml.characters("![CDATA[");
+        xhtml.characters("<![CDATA[");
         xhtml.characters(cdataContent.toString());
-        xhtml.characters("]]");
+        xhtml.characters("]]>");
         xhtml.endElement("pdf-coordinates");
     }
 
