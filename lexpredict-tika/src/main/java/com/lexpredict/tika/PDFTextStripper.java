@@ -54,10 +54,12 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
     // COORDS_EMBEDDED,       XHTML with all text symbols' coords in <span pos="...">
     // COORDS_EMBEDDED_AREA,  XHTML with text symbols' coords in <span pos="..."> per text line
     // COORDS_FLAT            XHTML with all text symbols' coords in one big CDATA tag
+    // COORDS_TEXT_FLAT       same as COORDS_FLAT + plain text in a separate tag
     public enum OutputDetalization {
         NO_EXTRA_DETAIL,
         COORDS_EMBEDDED,
-        COORDS_FLAT
+        COORDS_FLAT,
+        COORDS_TEXT_FLAT
     }
 
     private static float defaultIndentThreshold = 2.0f;
@@ -65,6 +67,8 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
     private static final boolean useCustomQuickSort;
 
     private static final Log LOG = LogFactory.getLog(org.apache.pdfbox.text.PDFTextStripper.class);
+
+    private static final ArrayList<TextPosition> emptyTextPositions = new ArrayList<>();
 
     // enable the ability to set the default indent/drop thresholds
     // with -D system properties:
@@ -178,7 +182,7 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
 
     private List<PDRectangle> beadRectangles = null;
 
-    protected OutputDetalization detalization = OutputDetalization.NO_EXTRA_DETAIL;
+    protected OutputDetalization detalization;
 
     protected NumberFormat defaultNumberFormat = NumberFormat.getInstance(new Locale("en", "US"));
 
@@ -208,7 +212,9 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
      */
     private boolean inParagraph;
 
-    protected StringBuffer cdataContent = new StringBuffer();
+    protected Map<String, TagData> cdataContent = new HashMap<>();
+
+    protected int totalTextLen = 0;
 
     /**
      * Instantiate a new PDFTextStripper object.
@@ -220,6 +226,18 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
         defaultNumberFormat.setMinimumFractionDigits(0);
         defaultNumberFormat.setMaximumFractionDigits(4);
         detalization = getOutputDetalization();
+
+        if (detalization == OutputDetalization.COORDS_FLAT)
+            cdataContent.put("coord",
+                    new TagData("pdf-coordinates", false, "style=\"display: none\""));
+        if (detalization == OutputDetalization.COORDS_TEXT_FLAT) {
+            cdataContent.put("coord",
+                    new TagData("pdf-coordinates", false, "style=\"display: none\""));
+            cdataContent.put("text",
+                    new TagData("pdf-text", true, "style=\"display: none\""));
+            cdataContent.put("pages",
+                    new TagData("pdf-pages", false, "style=\"display: none\""));
+        }
     }
 
     private static OutputDetalization getOutputDetalization() {
@@ -230,6 +248,8 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
             return OutputDetalization.COORDS_EMBEDDED;
         if (parseMode.equals("coords_flat"))
             return OutputDetalization.COORDS_FLAT;
+        if (parseMode.equals("coords_text_flat"))
+            return OutputDetalization.COORDS_TEXT_FLAT;
         return OutputDetalization.NO_EXTRA_DETAIL;
     }
 
@@ -506,7 +526,14 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
      */
     protected void endPage(PDPage page) throws IOException
     {
-        // default is to do nothing
+        storePageLength();
+    }
+
+    protected void storePageLength()
+    {
+        if (detalization == OutputDetalization.COORDS_TEXT_FLAT) {
+            cdataContent.get("pages").data.append(String.format("%d%n", totalTextLen));
+        }
     }
 
     private static final float END_OF_LAST_TEXT_X_RESET_VALUE = -1;
@@ -1761,11 +1788,28 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
                 writeString(text, positions);
             else if (detalization == OutputDetalization.COORDS_FLAT)
             {
-                writeString(text, new ArrayList<TextPosition>());
+                writeString(text, emptyTextPositions);
                 // store coordinates for CDATA
                 for (TextPosition pos : positions)
-                    cdataContent.append(formatFloatNumbers("\n",
-                            pos.getX(), pos.getY(), pos.getWidth(), pos.getHeight()));
+                    cdataContent.get("coord").data.append(
+                            formatFloatNumbers("\n",
+                                    pos.getX(), pos.getY(), pos.getWidth(), pos.getHeight()));
+            }
+            else if (detalization == OutputDetalization.COORDS_TEXT_FLAT)
+            {
+                // add fragment separating character
+                text += "\n";
+                totalTextLen += text.length();
+                // add fictive coordinate
+                positions.add(positions.get(positions.size() - 1));
+                writeString(text, emptyTextPositions);
+                // store coordinates for CDATA
+                for (TextPosition pos : positions)
+                    cdataContent.get("coord").data.append(
+                            formatFloatNumbers("\n",
+                                    pos.getX(), pos.getY(), pos.getWidth(), pos.getHeight()));
+                // and plain text
+                cdataContent.get("text").data.append(text);
             }
             else
                 writeString(word.getText());

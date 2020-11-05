@@ -91,6 +91,15 @@ public class AlterPDFParserTest extends TikaTest {
         assertTrue(text.length() > 50);
     }
 
+    @Test
+    public void testParseXhtmlCsTextFlat() throws Exception {
+        String oldSysEnv = setEnvVar("LEXNLP_TIKA_XML_DETAIL", "coords_text_flat");
+        String text = getTextFromDoc("/test-documents/double_space_test.pdf",
+                AlterPDFParser.ParsePdfMode.PDF_ONLY, "xml");
+        setEnvVar("LEXNLP_TIKA_XML_DETAIL", oldSysEnv);
+        assertTrue(text.length() > 50);
+    }
+
     protected static String setEnvVar(String varName, String varValue) throws Exception {
         String oldSysEnv = System.getenv(varName);
         oldSysEnv = oldSysEnv == null ? "" : oldSysEnv;

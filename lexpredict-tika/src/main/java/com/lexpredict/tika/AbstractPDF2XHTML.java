@@ -613,7 +613,7 @@ class AbstractPDF2XHTML extends PDFTextStripper {
             handleDestinationOrAction(additionalActions.getWP(), AbstractPDF2XHTML.ActionTrigger.BEFORE_DOCUMENT_PRINT);
             handleDestinationOrAction(additionalActions.getWS(), AbstractPDF2XHTML.ActionTrigger.BEFORE_DOCUMENT_SAVE);
 
-            if (cdataContent.length() > 0)
+            if (cdataContent.size() > 0)
                 dumpCDATA();
 
             xhtml.endDocument();
