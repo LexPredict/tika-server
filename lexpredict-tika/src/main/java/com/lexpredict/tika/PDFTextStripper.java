@@ -1802,7 +1802,17 @@ public class PDFTextStripper extends LegacyPDFStreamEngine
                 totalTextLen += text.length();
                 // add fictive coordinate
                 positions.add(positions.get(positions.size() - 1));
+
+                // replace "[[" with "[ [" + fictive coordinates
+                while (true) {
+                    int index = text.indexOf("]]");
+                    if (index < 0) break;
+                    text = text.substring(0, index) + "] ]" + text.substring(index + 2);
+                    positions.add(index + 1, positions.get(index));
+                }
+
                 writeString(text, emptyTextPositions);
+
                 // store coordinates for CDATA
                 for (TextPosition pos : positions)
                     cdataContent.get("coord").data.append(
