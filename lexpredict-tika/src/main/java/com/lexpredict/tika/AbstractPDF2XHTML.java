@@ -469,6 +469,7 @@ class AbstractPDF2XHTML extends PDFTextStripper {
                 handleDestinationOrAction(pageActions.getO(), AbstractPDF2XHTML.ActionTrigger.PAGE_OPEN);
             }
             xhtml.endElement("div");
+            super.endPage(page);
         } catch (SAXException|TikaException e) {
             throw new IOExceptionWithCause("Unable to end a page", e);
         } catch (IOException e) {
