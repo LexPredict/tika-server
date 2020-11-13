@@ -25,7 +25,7 @@ import java.lang.reflect.Method;
 
 public class AlterPDFParser extends PDFParser {
     public enum ParsePdfMode {
-        DEFAULT, PDF_OCR, PDF_ONLY, TEXT_STRIP
+        DEFAULT, PDF_OCR, PDF_ONLY, TEXT_STRIP, PREFER_TEXT
     }
 
     // uses this value if it is not set in HttpRequest
@@ -98,11 +98,15 @@ public class AlterPDFParser extends PDFParser {
                     callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig, true);
                 }
                 // smart parsing: PDF or OCR
-                else if (pdfParseMode == ParsePdfMode.PDF_OCR) {
+                else if (pdfParseMode == ParsePdfMode.PDF_OCR ||
+                         pdfParseMode == ParsePdfMode.PREFER_TEXT) {
                     HttpRequestParamsReader.getInstance().outIfVerbose("AlterPDFParser.parse(PDF_OCR)");
                     PdfContentTypeChecker checker = new PdfContentTypeChecker();
                     PdfContentTypeChecker.PdfContent docType = checker.determineDocContentType(pdfDocument);
-                    if (docType != PdfContentTypeChecker.PdfContent.IMAGES)
+                    HttpRequestParamsReader.getInstance().outIfVerbose("detected doc type: " + docType.toString());
+
+                    if (docType == PdfContentTypeChecker.PdfContent.TEXT ||
+                        (docType != PdfContentTypeChecker.PdfContent.IMAGES && pdfParseMode == ParsePdfMode.PREFER_TEXT))
                         callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig, false);
                     else {
                         metadata.add("X-Parsed-By", TesseractOCRParser.class.toString());
@@ -143,6 +147,8 @@ public class AlterPDFParser extends PDFParser {
             return ParsePdfMode.PDF_OCR;
         if (parseMode.equals(HttpRequestParamsReader.PDF_PARSE_METHOD_PDF_ONLY))
             return ParsePdfMode.PDF_ONLY;
+        if (parseMode.equals(HttpRequestParamsReader.PDF_PARSE_METHOD_PDF_PREFER_TEXT))
+            return ParsePdfMode.PREFER_TEXT;
 
         return defaultParseMode;
     }
@@ -161,20 +167,16 @@ public class AlterPDFParser extends PDFParser {
     // process PDF as a printed (vector) document
     // uses standard Tika's PDF2XHTML class by reflection
     // because this class is private (package restricted) and I don't
-    // want to copy the class's code and a bunsh of dependent modules into plugin
+    // want to copy the class's code and a bunch of dependent modules into plugin
     private void callPDF2XHTMLProcess(PDDocument document, ContentHandler handler,
                                         ParseContext context, Metadata metadata,
                                         PDFParserConfig config,
-                                        Boolean noOCR) throws
+                                        boolean noOcr) throws
             TikaException, SAXException {
-
+        // noOcr ptr is ignored in current implementation
         PDFParserConfig.OCR_STRATEGY oldOcrStrategy = config.getOcrStrategy();
-
-        config.setOcrStrategy(noOCR ? PDFParserConfig.OCR_STRATEGY.NO_OCR
-                : PDFParserConfig.OCR_STRATEGY.OCR_AND_TEXT_EXTRACTION);
-
+        config.setOcrStrategy(PDFParserConfig.OCR_STRATEGY.NO_OCR);
         PDF2XHTML.process(document, handler, context, metadata, config);
-
         config.setOcrStrategy(oldOcrStrategy);
     }
 
@@ -184,11 +186,7 @@ public class AlterPDFParser extends PDFParser {
                                       ParseContext context, Metadata metadata,
                                       PDFParserConfig config) throws
             ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-
-        TesseractOCRConfig cfg = new TesseractOCRConfig();
-        // here I set default timeout of 2 hours
-        // The calling process should check parsing process and terminate it by timeout
-        cfg.setTimeout(60 * 60 * 2);
+        TesseractOCRConfig cfg = buildTesseractOCRConfig(config);
         context.set(TesseractOCRConfig.class, cfg);
 
         PDFParserConfig.OCR_STRATEGY oldOcrStrategy = config.getOcrStrategy();
@@ -212,20 +210,40 @@ public class AlterPDFParser extends PDFParser {
         config.setExtractUniqueInlineImagesOnly(oldExtractUniqueInlineImagesOnly);
     }
 
+    private TesseractOCRConfig buildTesseractOCRConfig(PDFParserConfig config)
+    {
+        TesseractOCRConfig cfg = new TesseractOCRConfig();
+        // here I set default timeout of 2 hours
+        // The calling process should check parsing process and terminate it by timeout
+        cfg.setTimeout(60 * 60 * 2);
+        return cfg;
+    }
+
     // check whether the method should read XFA (forms) only
     private boolean callShouldHandleXFAOnly(PDDocument pdDocument, PDFParserConfig config)
-            throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+            throws InvocationTargetException, IllegalAccessException {
         boolean xfa = this.checkDocHasXFA(pdDocument);
-        Method m = getClass().getSuperclass().getDeclaredMethod("shouldHandleXFAOnly",
-                boolean.class, PDFParserConfig.class);
+        Method m;
+        try {
+            m = getClass().getSuperclass().getDeclaredMethod("shouldHandleXFAOnly",
+                    boolean.class, PDFParserConfig.class);
+        } catch (NoSuchMethodException e) {
+            return false;
+        }
         m.setAccessible(true);
         return (boolean) m.invoke(this, xfa, config);
     }
 
     private boolean checkDocHasXFA(PDDocument pdDocument)
-            throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
-        Method m = getClass().getSuperclass().getDeclaredMethod("hasXFA",
-                PDDocument.class);
+            throws InvocationTargetException, IllegalAccessException {
+        Method m;
+        try {
+            m = getClass().getSuperclass().getDeclaredMethod("hasXFA",
+                    PDDocument.class);
+        }
+        catch (NoSuchMethodException e) {
+            return false;
+        }
         m.setAccessible(true);
         return (boolean) m.invoke(this, pdDocument);
     }

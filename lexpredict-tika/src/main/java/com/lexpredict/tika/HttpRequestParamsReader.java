@@ -18,6 +18,7 @@ enum CommonParseFlag
 public class HttpRequestParamsReader {
     public static final String PDF_PARSE_METHOD_STRIP = "strip";
     public static final String PDF_PARSE_METHOD_PDF_OCR = "pdf_ocr";
+    public static final String PDF_PARSE_METHOD_PDF_PREFER_TEXT = "pdf_prefer_text";
     public static final String PDF_PARSE_METHOD_PDF_ONLY = "pdf_only";
 
     public HashMap<String, String> rawParams = new HashMap<String, String>();
