@@ -25,7 +25,7 @@ import java.lang.reflect.Method;
 
 public class AlterPDFParser extends PDFParser {
     public enum ParsePdfMode {
-        DEFAULT, PDF_OCR, PDF_ONLY, TEXT_STRIP, PREFER_TEXT
+        DEFAULT, PDF_OCR, PDF_ONLY, TEXT_STRIP, PREFER_TEXT, OCR_ONLY
     }
 
     // uses this value if it is not set in HttpRequest
@@ -106,12 +106,16 @@ public class AlterPDFParser extends PDFParser {
                     HttpRequestParamsReader.getInstance().outIfVerbose("detected doc type: " + docType.toString());
 
                     if (docType == PdfContentTypeChecker.PdfContent.TEXT ||
-                        (docType != PdfContentTypeChecker.PdfContent.IMAGES && pdfParseMode == ParsePdfMode.PREFER_TEXT))
+                            (docType != PdfContentTypeChecker.PdfContent.IMAGES && pdfParseMode == ParsePdfMode.PREFER_TEXT))
                         callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig, false);
                     else {
                         metadata.add("X-Parsed-By", TesseractOCRParser.class.toString());
                         callOCR2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
                     }
+                }
+                else if (pdfParseMode == ParsePdfMode.OCR_ONLY) {
+                    metadata.add("X-Parsed-By", TesseractOCRParser.class.toString());
+                    callOCR2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig);
                 } else { // ... or parse it default Tika-way
                     HttpRequestParamsReader.getInstance().outIfVerbose("AlterPDFParser.parse(callPDF2XHTMLProcess)");
                     callPDF2XHTMLProcess(pdfDocument, handler, context, metadata, localConfig, false);
@@ -147,6 +151,8 @@ public class AlterPDFParser extends PDFParser {
             return ParsePdfMode.PDF_OCR;
         if (parseMode.equals(HttpRequestParamsReader.PDF_PARSE_METHOD_PDF_ONLY))
             return ParsePdfMode.PDF_ONLY;
+        if (parseMode.equals(HttpRequestParamsReader.PDF_PARSE_METHOD_OCR_ONLY))
+            return ParsePdfMode.OCR_ONLY;
         if (parseMode.equals(HttpRequestParamsReader.PDF_PARSE_METHOD_PDF_PREFER_TEXT))
             return ParsePdfMode.PREFER_TEXT;
 
@@ -185,7 +191,8 @@ public class AlterPDFParser extends PDFParser {
     private void callOCR2XHTMLProcess(PDDocument document, ContentHandler handler,
                                       ParseContext context, Metadata metadata,
                                       PDFParserConfig config) throws
-            ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+            ClassNotFoundException, NoSuchMethodException, InvocationTargetException, IllegalAccessException,
+            TikaException, SAXException {
         TesseractOCRConfig cfg = buildTesseractOCRConfig(config);
         context.set(TesseractOCRConfig.class, cfg);
 

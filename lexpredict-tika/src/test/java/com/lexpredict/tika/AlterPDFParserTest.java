@@ -74,6 +74,15 @@ public class AlterPDFParserTest extends TikaTest {
     }
 
     @Test
+    public void testParseJBig() throws Exception {
+        String oldSysEnv = setEnvVar("LEXNLP_TIKA_PARSER_MODE", "ocr_only");
+        String text = getTextFromDoc("/test-documents/jbig.pdf",
+                AlterPDFParser.ParsePdfMode.OCR_ONLY, "xml");
+        setEnvVar("LEXNLP_TIKA_PARSER_MODE", oldSysEnv);
+        assertTrue(text.length() > 50);
+    }
+
+    @Test
     public void testParseXhtmlCoordsEmbedded() throws Exception {
         String oldSysEnv = setEnvVar("LEXNLP_TIKA_XML_DETAIL", "coords_embedded");
         String text = getTextFromDoc("/test-documents/industrial developing authority.pdf",

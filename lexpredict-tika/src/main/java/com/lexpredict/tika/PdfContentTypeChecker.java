@@ -10,7 +10,7 @@ import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.graphics.PDXObject;
 import org.apache.pdfbox.pdmodel.graphics.form.PDFormXObject;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
-import org.apache.pdfbox.text.PDFTextStripper;
+import org.xml.sax.SAXException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -98,7 +98,7 @@ public class PdfContentTypeChecker {
     }
 
 
-    private void calculateTextLengthOnPage(PDDocument doc, int pageNum1Based) throws IOException {
+    private void calculateTextLengthOnPage(PDDocument doc, int pageNum1Based) throws IOException, SAXException {
         this.pdfTextStripper.setStartPage(pageNum1Based);
         this.pdfTextStripper.setEndPage(pageNum1Based);
         String text = this.pdfTextStripper.getText(doc);
